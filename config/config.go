@@ -31,20 +31,25 @@ type Config struct {
 }
 
 const (
-	ZKGROUP_SERVER_PUBLIC_PARAMS = "AMhf5ywVwITZMsff/eCyudZx9JDmkkkbV6PInzG4p8x3VqVJSFiMvnvlEKWuRob/1eaIetR31IYeAbm0NdOuHH8Qi+Rexi1wLlpzIo1gstHWBfZzy1+qHRV5A4TqPp15YzBPm0WSggW6PbSn+F4lf57VCnHF7p8SvzAA2ZZJPYJURt8X7bbg+H3i+PEjH9DXItNEqs2sNcug37xZQDLm7X36nOoGPs54XsEGzPdEV+itQNGUFEjY6X9Uv+Acuks7NpyGvCoKxGwgKgE5XyJ+nNKlyHHOLb6N1NuHyBrZrgtY/JYJHRooo5CEqYKBqdFnmbTVGEkCvJKxLnjwKWf+fEPoWeQFj5ObDjcKMZf2Jm2Ae69x+ikU5gBXsRmoF94GXQ=="
+	ZKGROUP_SERVER_PUBLIC_PARAMS = "AMh1gu/ongPtTUjIejLX8fWKvJo5HkW6ajb5X5IGq0dABBjMz4KPsJYZ5BJEAavUMC7d8qHyAGUiRs4uIlwubQ4qVhlpEZtd8jIDDHgS0Bqi0RXr9B9fcw8wrNoEcdcnX7hnOuZV/8nZQ1WQdmNiP7LR7EvTeFk/iEj7/UV7bux1pjvSNq4E964apj+2Pux2Xo9kNctJ0oWehW/3vujoiy8="
+	TrustRoot                    = "BVQeEqXq/rJDgkYbR9XyUIf7pGiknKzQY1sS5jhzcG86"
 )
 
 // AccountCapabilities describes what functions axolotl supports
 type AccountCapabilities struct {
 	// Uuid              bool `json:"uuid" yaml:"uuid"`
-	Gv2               bool `json:"gv2" yaml:"gv2"`
-	SenderKey         bool `json:"senderKey" yaml:"senderKey"`
-	AnnouncementGroup bool `json:"announcementGroup" yaml:"announcementGroup"`
-	ChangeNumber      bool `json:"changeNumber" yaml:"changeNumber"`
-	Stories           bool `json:"stories" yaml:"stories"`
-	GiftBadges        bool `json:"giftBadges" yaml:"giftBadges"`
-	Storage           bool `json:"storage" yaml:"storage"`
-	Gv1Migration      bool `json:"gv1-migration" yaml:"gv1-migration"`
+	Gv2 bool `json:"gv2" yaml:"gv2"`
+	//SenderKey bool `json:"senderKey" yaml:"senderKey"`
+	//AnnouncementGroup bool `json:"announcementGroup" yaml:"announcementGroup"`
+	//ChangeNumber bool `json:"changeNumber" yaml:"changeNumber"`
+	//Stories      bool `json:"stories" yaml:"stories"`
+	//GiftBadges   bool `json:"giftBadges" yaml:"giftBadges"`
+	//Storage      bool `json:"storage" yaml:"storage"`
+	Gv1Migration     bool `json:"gv1-migration" yaml:"gv1-migration"`
+	Transfer         bool `json:"transfer" yaml:"transfer"`
+	Gv2_3            bool `json:"gv2-3" yaml:"gv2-3"`
+	GV2_2            bool `json:"gv2-2" yaml:"gv2-2"`
+	Gv2_notEncrypted bool `json:"gv2_notEncrypted" yaml:"gv2_notEncrypted"`
 }
 
 var (
