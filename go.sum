@@ -265,8 +265,6 @@ github.com/coming-chat/merlin v0.1.2-0.20211216101619-d46ce5719651 h1:LNfM9mFVlv
 github.com/coming-chat/merlin v0.1.2-0.20211216101619-d46ce5719651/go.mod h1:TFKs5BSkNE1h9y6CqwFmt1ZoLblRWCB0xKu97M/L7ho=
 github.com/coming-chat/wallet-SDK v0.2.7-0.20230223034542-c48952df2cb1 h1:Qj7ChsnYBj5Egh/azaX/CMBW2/rsLGhgO3SEuosazuQ=
 github.com/coming-chat/wallet-SDK v0.2.7-0.20230223034542-c48952df2cb1/go.mod h1:X/GH2g1DUVkGtS+ZbEFVeBYG+O+yAhFMcp07pT4ylRY=
-github.com/coming-chat/zkgroup v0.7.0-3 h1:5Xn6XqpQ+ZFetnHuGP4mzUZ3Lwk8VJTUvWbxwkAjSF4=
-github.com/coming-chat/zkgroup v0.7.0-3/go.mod h1:xI1B2z6oS5Du/mDeGspIKZYS5bC0f/nuNW6I51kr+2M=
 github.com/coming-chat/zkgroup v0.7.0-4 h1:MuytX0da28mwqUfv9xW9tAqm8TeD/ctF/Tn9uTtDbr8=
 github.com/coming-chat/zkgroup v0.7.0-4/go.mod h1:xI1B2z6oS5Du/mDeGspIKZYS5bC0f/nuNW6I51kr+2M=
 github.com/confio/ics23/go v0.6.6 h1:pkOy18YxxJ/r0XFDCnrl4Bjv6h4LkBSpLS6F38mrKL8=
