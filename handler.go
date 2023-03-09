@@ -88,21 +88,21 @@ func handleDataMessage(src string, srcUUID string, timestamp uint64, dm *signals
 		return err
 	}
 	msg := &Message{
-		source:      src,
-		sourceUUID:  srcUUID,
-		message:     dm.GetBody(),
-		attachments: atts,
-		groupV2:     gr2,
-		flags:       flags,
-		expireTimer: dm.GetExpireTimer(),
-		profileKey:  dm.GetProfileKey(),
-		timestamp:   *dm.Timestamp,
-		quote:       dm.GetQuote(),
-		contact:     dm.GetContact(),
-		sticker:     dm.GetSticker(),
-		reaction:    dm.GetReaction(),
-		// requiredProtocolVersion: dm.GetRequiredProtocolVersion(),
-		// isViewOnce: *dm.IsViewOnce,
+		source:                  src,
+		sourceUUID:              srcUUID,
+		message:                 dm.GetBody(),
+		attachments:             atts,
+		groupV2:                 gr2,
+		flags:                   flags,
+		expireTimer:             dm.GetExpireTimer(),
+		profileKey:              dm.GetProfileKey(),
+		timestamp:               dm.GetTimestamp(),
+		quote:                   dm.GetQuote(),
+		contact:                 dm.GetContact(),
+		sticker:                 dm.GetSticker(),
+		reaction:                dm.GetReaction(),
+		requiredProtocolVersion: dm.GetRequiredProtocolVersion(),
+		isViewOnce:              dm.GetIsViewOnce(),
 	}
 
 	if client.MessageHandler != nil {
@@ -127,15 +127,15 @@ func handleCallMessage(src string, srcUUID string, timestamp uint64, cm *signals
 	if m := cm.GetLegacyHangup(); m != nil {
 		message += "hangup"
 	}
-	// if m := cm.GetMultiRing(); m == true {
-	// 	message += "ring "
-	// }
+	if m := cm.GetMultiRing(); m == true {
+		message += "ring "
+	}
 	if m := cm.GetIceUpdate(); m != nil {
 		message += "ring"
 	}
-	// if m := cm.GetOpaque(); m != nil {
-	// 	message += "opaque"
-	// }
+	if m := cm.GetOpaque(); m != nil {
+		message += "opaque"
+	}
 
 	msg := &Message{
 		source:     src,

@@ -66,15 +66,6 @@ func handleSyncMessage(src string, srcUUID string, timestamp uint64, sm *signals
 	} else if sm.GetOutgoingPayment() != nil {
 		log.Debugln("[textsecure] SyncMessage unhandled GetOutgoing payment")
 		return nil
-	} else if sm.GetViewed() != nil {
-		log.Debugln("[textsecure] SyncMessage unhandled getViewed")
-		return nil
-	} else if sm.GetPniIdentity() != nil {
-		log.Debug("[textsecure] SyncMessage unhandled getPniIdentity")
-		return nil
-	} else if sm.GetPniChangeNumber() != nil {
-		log.Debugln("[textsecure] SyncMessage unhandled getPniChangeNumber")
-		return nil
 	} else {
 		log.Errorf("[textsecure] SyncMessage contains no known sync types")
 	}
@@ -196,9 +187,7 @@ func sendContactUpdate() error {
 	sm := &signalservice.SyncMessage{
 		Contacts: &signalservice.SyncMessage_Contacts{
 			Blob: &signalservice.AttachmentPointer{
-				AttachmentIdentifier: &signalservice.AttachmentPointer_CdnKey{
-					CdnKey: attachmentPointer.cdnKey,
-				},
+				CdnKey:      &attachmentPointer.cdnKey,
 				CdnNumber:   &attachmentPointer.cdnNr,
 				ContentType: &attachmentPointer.ct,
 				Key:         attachmentPointer.keys[:],
@@ -244,9 +233,7 @@ func sendGroupUpdate() error {
 	sm := &signalservice.SyncMessage{
 		Groups: &signalservice.SyncMessage_Groups{
 			Blob: &signalservice.AttachmentPointer{
-				AttachmentIdentifier: &signalservice.AttachmentPointer_CdnKey{
-					CdnKey: attachmentPointer.cdnKey,
-				},
+				CdnKey:      &attachmentPointer.cdnKey,
 				CdnNumber:   &attachmentPointer.cdnNr,
 				ContentType: &attachmentPointer.ct,
 				Key:         attachmentPointer.keys[:],
