@@ -1,19 +1,17 @@
 package textsecure
 
 import (
-	"crypto/tls"
 	"errors"
 	"net"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/coming-chat/coming-go-v2/config"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
+	"github.com/coming-chat/coming-go-v2/registration"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
-	"github.com/signal-golang/textsecure/config"
-	signalservice "github.com/signal-golang/textsecure/protobuf"
-	"github.com/signal-golang/textsecure/registration"
-	rootCa "github.com/signal-golang/textsecure/rootCa"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -60,9 +58,9 @@ func (c *Conn) connect(originURL, user, pass string) error {
 		WriteBufferSize: 1024,
 	}
 	d.NetDial = func(network, addr string) (net.Conn, error) { return net.Dial(network, u.Host) }
-	d.TLSClientConfig = &tls.Config{
-		RootCAs: rootCa.RootCA,
-	}
+	//d.TLSClientConfig = &tls.Config{
+	//	RootCAs: rootCa.RootCA,
+	//}
 
 	c.ws, _, err = d.Dial(u.String(), nil)
 	if err != nil {
