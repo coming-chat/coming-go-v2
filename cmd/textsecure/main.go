@@ -142,6 +142,12 @@ func getUsername() string {
 func getLocalContacts() ([]contacts.Contact, error) {
 	return contacts.ReadContacts(configDir + "/contacts.yml")
 }
+func getMnemonic() string {
+	return readLine("input mnemonic")
+}
+func signInOrSignUp() string {
+	return readLine("sign in/sign up")
+}
 
 func sendMessageToRedis(rmsg RedisMessage) {
 	b, err := json.Marshal(rmsg)
@@ -522,6 +528,8 @@ func main() {
 		CallMessageHandler:    callMessageHandler,
 		SyncReadHandler:       syncReadHandler,
 		SyncSentHandler:       syncSentHandler,
+		GetMnemonic:           getMnemonic,
+		SignInOrSignUp:        signInOrSignUp,
 	}
 
 	err := textsecure.Setup(client)
@@ -585,15 +593,15 @@ func main() {
 	}
 
 	if !echo {
-		contacts, err := textsecure.GetRegisteredContacts()
-		if err != nil {
-			log.Infof("Could not get contacts: %s", err)
-		}
+		//contacts, err := textsecure.GetRegisteredContacts()
+		//if err != nil {
+		//	log.Infof("Could not get contacts: %s", err)
+		//}
 
-		telToName = make(map[string]string)
-		for _, c := range contacts {
-			telToName[c.Tel] = c.Name
-		}
+		//telToName = make(map[string]string)
+		//for _, c := range contacts {
+		//	telToName[c.Tel] = c.Name
+		//}
 
 		if newgroup != "" {
 			s := strings.Split(newgroup, ":")
@@ -609,13 +617,13 @@ func main() {
 			textsecure.LeaveGroup(leavegroup)
 			return
 		}
-		// If "to" matches a contact name then get its phone number, otherwise assume "to" is a phone number
-		for _, c := range contacts {
-			if strings.EqualFold(c.Name, to) {
-				to = c.UUID
-				break
-			}
-		}
+		//If "to" matches a contact name then get its phone number, otherwise assume "to" is a phone number
+		//for _, c := range contacts {
+		//	if strings.EqualFold(c.Name, to) {
+		//		to = c.UUID
+		//		break
+		//	}
+		//}
 
 		if to != "" {
 			// Terminate the session with the peer
