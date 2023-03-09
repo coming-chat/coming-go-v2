@@ -2,3 +2,4 @@ cmd/textsecure/textsecure
 cmd/textsecure/.storage
 cmd/textsecure/libzkgroup*
 
+cmd/textsecure/.config/
