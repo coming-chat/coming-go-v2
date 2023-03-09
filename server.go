@@ -56,6 +56,10 @@ var (
 	SET_USERNAME_PATH         = "/v1/accounts/username/%s"
 	DELETE_USERNAME_PATH      = "/v1/accounts/username"
 	DELETE_ACCOUNT_PATH       = "/v1/accounts/me"
+	CID_REGISTER              = "/v1/accounts/v2/cid/cidRegister?signature=%s&transfer=%s"
+	LOGIN_PRE_MSG             = "/v1/accounts/login/pre/message"
+	LOGIN_GET_CIDS            = "/v1/accounts/login/getAllCids?page=%d&size=%d"
+	ALL_CID_LOGIN             = "/v1/accounts/allCid/login?cid=%s&transfer=%s"
 
 	attachmentPath           = "/v2/attachments/form/upload"
 	ATTACHMENT_DOWNLOAD_PATH = "/v2/attachments/"
@@ -115,6 +119,165 @@ var (
 	CONTACT_DISCOVERY = "/v1/discovery/%s"
 )
 
+// Login
+type LoginPrePubKeys struct {
+	Polka string `json:"polka"`
+	Evm   string `json:"evm"`
+	Aptos string `json:"aptos"`
+}
+
+func getLoginPreMsg(pubKeys LoginPrePubKeys) (string, error) {
+	log.Infoln("request login pre message")
+	if transport.Transport == nil {
+		return "", errors.New("[textsecure] No transport available")
+	}
+	body, err := json.Marshal(pubKeys)
+	if err != nil {
+		return "", err
+	}
+	resp, err := transport.Transport.PutJSON(LOGIN_PRE_MSG, body)
+	if err != nil {
+		log.Errorln("[textsecure] requestCode", err)
+		return "", err
+	}
+	if resp.IsError() {
+		return "", errors.New(resp.Error())
+	}
+	defer resp.Body.Close()
+	data := struct {
+		Token string `json:"token"`
+	}{}
+	respD, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	err = json.Unmarshal(respD, &data)
+	if err != nil {
+		return "", err
+	}
+	return data.Token, nil
+}
+
+type Signatures struct {
+	PolkaSignature string `json:"polkaSignature"`
+	EvmSignature   string `json:"evmSignature"`
+	AptosSignature string `json:"aptosSignature"`
+}
+
+func getCids(signatures Signatures, token string) ([]string, string, error) {
+	log.Infoln("request login cids")
+	if transport.Transport == nil {
+		return nil, "", errors.New("[textsecure] No transport available")
+	}
+	body, err := json.Marshal(signatures)
+	if err != nil {
+		return nil, "", err
+	}
+	path := fmt.Sprintf(LOGIN_GET_CIDS, 0, 10000)
+	resp, err := transport.Transport.PutWithHeaders(path, body, "application/json", map[string]string{
+		"Cid-Token": token,
+	})
+	if err != nil {
+		log.Errorln("[textsecure] requestCode", err)
+		return nil, "", err
+	}
+	if resp.IsError() {
+		return nil, "", errors.New(resp.Error())
+	}
+	defer resp.Body.Close()
+	data := struct {
+		Uuid           string `json:"uuid,omitempty"`
+		StorageCapable bool   `json:"storageCapable"`
+		Cids           []struct {
+			Cid       string `json:"cid"`
+			Expires   int64  `json:"expires"`
+			ImageUrl  string `json:"imageUrl"`
+			CidName   string `json:"cidName"`
+			ChainType string `json:"chainType"`
+		} `json:"cids"`
+		LoginToken string `json:"loginToken"`
+		Total      int64  `json:"total"`
+		Count      int64  `json:"count"`
+	}{}
+	respD, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", err
+	}
+	err = json.Unmarshal(respD, &data)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(data.Cids) == 0 {
+		return nil, "", errors.New("no cids")
+	}
+	var cids []string
+	for _, v := range data.Cids {
+		cids = append(cids, v.Cid)
+	}
+	return cids, data.LoginToken, nil
+}
+
+func loginWithCid(cid, loginToken string) (string, string, *AccountAttributes, error) {
+	log.Infoln("[textsecure] request cid login for ", cid)
+	key := identityKey.PrivateKey.Key()[:]
+	unidentifiedAccessKey, err := unidentifiedAccess.DeriveAccessKeyFrom(key)
+	if err != nil {
+		log.Debugln("[textsecure] verifyCode", err)
+		return "", "", nil, err
+	}
+	vd := AccountAttributes{
+		RegistrationID:  registration.Registration.RegistrationID,
+		FetchesMessages: false,
+		Video:           false,
+		Voice:           true,
+		Pin:             nil,
+		Name:            config.ConfigFile.Name,
+		Capabilities: config.AccountCapabilities{
+			Gv2:              true,
+			Gv1Migration:     true,
+			Gv2_3:            true,
+			Transfer:         true,
+			GV2_2:            true,
+			Gv2_notEncrypted: true,
+		},
+		DiscoverableByPhoneNumber:      false,
+		UnidentifiedAccessKey:          &unidentifiedAccessKey,
+		UnrestrictedUnidentifiedAccess: false,
+	}
+	path := fmt.Sprintf(ALL_CID_LOGIN, cid, "true")
+	if transport.Transport == nil {
+		return "", "", nil, errors.New("[textsecure] No transport available")
+	}
+	body, err := json.Marshal(vd)
+	if err != nil {
+		return "", "", nil, err
+	}
+	resp, err := transport.Transport.PutWithHeaders(path, body, "application/json; charset=utf-8", map[string]string{
+		"Login-Token": loginToken,
+	})
+	if err != nil {
+		log.Errorln("[textsecure] cid login err: ", err)
+		return "", "", nil, err
+	}
+	if resp.IsError() {
+		return "", "", nil, err
+	}
+	defer resp.Body.Close()
+	data := SignatureVerifyResp{}
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", nil, err
+	}
+	err = json.Unmarshal(bodyBytes, &data)
+	if err != nil {
+		return "", "", nil, err
+	}
+	if len(data.Cids) == 0 {
+		return "", "", nil, errors.New("no new cid return")
+	}
+	return data.Cids[0], data.Uuid, &vd, nil
+}
+
 // Registration
 const (
 	responseNeedCaptcha int = 402
@@ -122,47 +285,57 @@ const (
 )
 
 func requestCode(tel, method, captcha string) (string, *int, error) {
-	log.Infoln("[textsecure] request verification code for ", tel)
+	log.Infoln("[textsecure] request pre sign message for ", tel)
 	path := fmt.Sprintf(createAccountPath, method, tel, "android")
 	if captcha != "" {
 		path += "&captcha=" + captcha
 	}
-	if transport.Transport != nil {
+	if transport.Transport == nil {
+		return "", nil, errors.New("[textsecure] No transport available")
+	}
+	resp, err := transport.Transport.Get(path)
+	if err != nil {
+		log.Errorln("[textsecure] requestCode", err)
+		return "", nil, err
+	}
+	if resp.IsError() {
+		if resp.Status == 402 {
+			buf := new(bytes.Buffer)
+			buf.ReadFrom(resp.Body)
+			newStr := buf.String()
+			log.Errorln("[textsecure] requestCode", newStr)
+			defer resp.Body.Close()
 
-		resp, err := transport.Transport.Get(path)
+			return "", &resp.Status, errors.New("Need to solve captcha")
+		} else if resp.Status == 413 {
+			buf := new(bytes.Buffer)
+			buf.ReadFrom(resp.Body)
+			newStr := buf.String()
+			log.Errorln("[textsecure] requestCode", newStr)
+			defer resp.Body.Close()
+
+			return "", &resp.Status, errors.New("Rate limit exeded")
+		} else {
+			log.Debugln("[textsecure] request code status", resp.Status)
+			defer resp.Body.Close()
+
+			return "", nil, errors.New("Error, see logs")
+		}
+	} else {
+		defer resp.Body.Close()
+		data := struct {
+			Token string `json:"token"`
+		}{}
+		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Errorln("[textsecure] requestCode", err)
 			return "", nil, err
 		}
-		if resp.IsError() {
-			if resp.Status == 402 {
-				buf := new(bytes.Buffer)
-				buf.ReadFrom(resp.Body)
-				newStr := buf.String()
-				log.Errorln("[textsecure] requestCode", newStr)
-				defer resp.Body.Close()
-
-				return "", &resp.Status, errors.New("Need to solve captcha")
-			} else if resp.Status == 413 {
-				buf := new(bytes.Buffer)
-				buf.ReadFrom(resp.Body)
-				newStr := buf.String()
-				log.Errorln("[textsecure] requestCode", newStr)
-				defer resp.Body.Close()
-
-				return "", &resp.Status, errors.New("Rate limit exeded")
-			} else {
-				log.Debugln("[textsecure] request code status", resp.Status)
-				defer resp.Body.Close()
-
-				return "", nil, errors.New("Error, see logs")
-			}
-		} else {
-			defer resp.Body.Close()
-			return "", nil, nil
+		err = json.Unmarshal(bodyBytes, &data)
+		if err != nil {
+			return "", nil, err
 		}
+		return data.Token, nil, nil
 	}
-	return "", nil, errors.New("[textsecure] No transport available")
 	// unofficial dev method, useful for development, with no telephony account needed on the server
 	// if method == "dev" {
 	// 	code := make([]byte, 7)
@@ -175,16 +348,85 @@ func requestCode(tel, method, captcha string) (string, *int, error) {
 	// return "", nil
 }
 
+type SignatureVerifyResp struct {
+	Uuid           string   `json:"uuid"`
+	StorageCapable bool     `json:"storageCapable"`
+	Cids           []string `json:"cids"`
+	LoginToken     string   `json:"loginToken"`
+}
+
+func cidRegister(token, signature string) (string, string, *AccountAttributes, error) {
+	log.Infoln("[textsecure] request verify signature and register for address: ")
+	key := identityKey.PrivateKey.Key()[:]
+	unidentifiedAccessKey, err := unidentifiedAccess.DeriveAccessKeyFrom(key)
+	if err != nil {
+		log.Debugln("[textsecure] verifyCode", err)
+		return "", "", nil, err
+	}
+	vd := AccountAttributes{
+		RegistrationID:  registration.Registration.RegistrationID,
+		FetchesMessages: false,
+		Video:           false,
+		Voice:           true,
+		Pin:             nil,
+		Name:            config.ConfigFile.Name,
+		Capabilities: config.AccountCapabilities{
+			Gv2:              true,
+			Gv1Migration:     true,
+			Gv2_3:            true,
+			Transfer:         true,
+			GV2_2:            true,
+			Gv2_notEncrypted: true,
+		},
+		DiscoverableByPhoneNumber:      false,
+		UnidentifiedAccessKey:          &unidentifiedAccessKey,
+		UnrestrictedUnidentifiedAccess: false,
+	}
+	path := fmt.Sprintf(CID_REGISTER, signature, "true")
+	if transport.Transport == nil {
+		return "", "", nil, errors.New("[textsecure] No transport available")
+	}
+	body, err := json.Marshal(vd)
+	if err != nil {
+		return "", "", nil, err
+	}
+	resp, err := transport.Transport.PutWithHeaders(path, body, "application/json; charset=utf-8", map[string]string{
+		"Cid-Token": token,
+	})
+	if err != nil {
+		log.Errorln("[textsecure] requestCode", err)
+		return "", "", nil, err
+	}
+	if resp.IsError() {
+		return "", "", nil, err
+	}
+	defer resp.Body.Close()
+	data := SignatureVerifyResp{}
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", nil, err
+	}
+	err = json.Unmarshal(bodyBytes, &data)
+	if err != nil {
+		return "", "", nil, err
+	}
+	if len(data.Cids) == 0 {
+		return "", "", nil, errors.New("no new cid return")
+	}
+	return data.Cids[0], data.Uuid, &vd, nil
+
+}
+
 // AccountAttributes describes what features are supported
 type AccountAttributes struct {
-	SignalingKey                   string                     `json:"signalingKey" yaml:"signalingKey"`
-	FetchesMessages                bool                       `json:"fetchesMessages" yaml:"fetchesMessages"`
-	RegistrationID                 uint32                     `json:"registrationId" yaml:"registrationId"`
-	Name                           string                     `json:"name" yaml:"name"`
-	Video                          bool                       `json:"video" yaml:"video"`
-	Voice                          bool                       `json:"voice" yaml:"voice"`
-	Pin                            *string                    `json:"pin" yaml:"pin"` // deprecated
-	BasicStorageCredentials        transport.AuthCredentials  `json:"basicStorageCredentials" yaml:"basicStorageCredentials"`
+	//SignalingKey                   string                     `json:"signalingKey" yaml:"signalingKey"`
+	FetchesMessages bool    `json:"fetchesMessages" yaml:"fetchesMessages"`
+	RegistrationID  uint32  `json:"registrationId" yaml:"registrationId"`
+	Name            string  `json:"name" yaml:"name"`
+	Video           bool    `json:"video" yaml:"video"`
+	Voice           bool    `json:"voice" yaml:"voice"`
+	Pin             *string `json:"pin" yaml:"pin"` // deprecated
+	//BasicStorageCredentials        transport.AuthCredentials  `json:"basicStorageCredentials" yaml:"basicStorageCredentials"`
 	Capabilities                   config.AccountCapabilities `json:"capabilities" yaml:"capabilities"`
 	DiscoverableByPhoneNumber      bool                       `json:"discoverableByPhoneNumber" yaml:"discoverableByPhoneNumber"`
 	UnrestrictedUnidentifiedAccess bool                       `json:"unrestrictedUnidentifiedAccess"`
@@ -192,7 +434,7 @@ type AccountAttributes struct {
 }
 
 type UpdateAccountAttributes struct {
-	SignalingKey                   *string                    `json:"signalingKey" yaml:"signalingKey"`
+	//SignalingKey                   *string                    `json:"signalingKey" yaml:"signalingKey"`
 	FetchesMessages                bool                       `json:"fetchesMessages" yaml:"fetchesMessages"`
 	RegistrationID                 uint32                     `json:"registrationId" yaml:"registrationId"`
 	Name                           string                     `json:"name" yaml:"name"`
@@ -202,8 +444,8 @@ type UpdateAccountAttributes struct {
 	UnrestrictedUnidentifiedAccess bool                       `json:"unrestrictedUnidentifiedAccess"`
 	Capabilities                   config.AccountCapabilities `json:"capabilities" yaml:"capabilities"`
 	DiscoverableByPhoneNumber      bool                       `json:"discoverableByPhoneNumber" yaml:"discoverableByPhoneNumber"`
-	Video                          bool                       `json:"video" yaml:"video"`
-	Voice                          bool                       `json:"voice" yaml:"voice"`
+	//Video                          bool                       `json:"video" yaml:"video"`
+	//Voice                          bool                       `json:"voice" yaml:"voice"`
 }
 
 type RegistrationLockFailure struct {
@@ -220,21 +462,21 @@ func verifyCode(code string, pin *string, credentials *transport.AuthCredentials
 		log.Debugln("[textsecure] verifyCode", err)
 	}
 	vd := AccountAttributes{
-		SignalingKey:    base64.StdEncoding.EncodeToString(registration.Registration.SignalingKey),
+		//SignalingKey:    base64.StdEncoding.EncodeToString(registration.Registration.SignalingKey),
 		RegistrationID:  registration.Registration.RegistrationID,
 		FetchesMessages: true,
-		Voice:           false,
-		Video:           false,
-		Pin:             nil,
-		Name:            config.ConfigFile.Name,
+		//Voice:           false,
+		Video: false,
+		Pin:   nil,
+		Name:  config.ConfigFile.Name,
 		Capabilities: config.AccountCapabilities{
 			// Uuid:              true,
-			Gv2:               true,
-			Storage:           false,
-			Gv1Migration:      false,
-			SenderKey:         false,
-			AnnouncementGroup: true,
-			ChangeNumber:      false,
+			Gv2: true,
+			//Storage:           false,
+			Gv1Migration: false,
+			//SenderKey:         false,
+			//AnnouncementGroup: true,
+			//ChangeNumber:      false,
 		},
 		DiscoverableByPhoneNumber:      true,
 		UnidentifiedAccessKey:          &unidentifiedAccessKey,
@@ -243,7 +485,7 @@ func verifyCode(code string, pin *string, credentials *transport.AuthCredentials
 	}
 	if pin != nil {
 		vd.Pin = pin
-		vd.BasicStorageCredentials = *credentials
+		//vd.BasicStorageCredentials = *credentials
 	}
 	log.Debugln("[textsecure] verifyCode", vd)
 	body, err := json.Marshal(vd)
@@ -315,12 +557,12 @@ func SetAccountCapabilities(capabilities config.AccountCapabilities) error {
 		log.Errorln("[textsecure] SetAccountCapabilities ceating unidentifiedAccessKey: ", err)
 		return err
 	}
-	signalingKey := base64.StdEncoding.EncodeToString(registration.Registration.SignalingKey)
+	//signalingKey := base64.StdEncoding.EncodeToString(registration.Registration.SignalingKey)
 	attributes := UpdateAccountAttributes{
-		SignalingKey:                   &signalingKey,
-		RegistrationID:                 registration.Registration.RegistrationID,
-		Voice:                          false,
-		Video:                          false,
+		//SignalingKey:                   &signalingKey,
+		RegistrationID: registration.Registration.RegistrationID,
+		//Voice:                          false,
+		//Video:                          false,
 		FetchesMessages:                true,
 		Pin:                            nil,
 		Name:                           config.ConfigFile.Name,
@@ -759,9 +1001,6 @@ func createMessage(msg *outgoingMessage) *signalservice.DataMessage {
 	}
 	dm.ExpireTimer = &msg.expireTimer
 	if msg.attachment != nil {
-		id := signalservice.AttachmentPointer_CdnKey{
-			CdnKey: msg.attachment.cdnKey,
-		}
 		// todo send file names
 		filename := ""
 		if msg.attachment.voiceNote {
@@ -769,13 +1008,13 @@ func createMessage(msg *outgoingMessage) *signalservice.DataMessage {
 		}
 		dm.Attachments = []*signalservice.AttachmentPointer{
 			{
-				AttachmentIdentifier: &id,
-				CdnNumber:            &msg.attachment.cdnNr,
-				ContentType:          &msg.attachment.ct,
-				Key:                  msg.attachment.keys[:],
-				Digest:               msg.attachment.digest[:],
-				Size:                 &msg.attachment.size,
-				FileName:             &filename,
+				CdnKey:      &msg.attachment.cdnKey,
+				CdnNumber:   &msg.attachment.cdnNr,
+				ContentType: &msg.attachment.ct,
+				Key:         msg.attachment.keys[:],
+				Digest:      msg.attachment.digest[:],
+				Size:        &msg.attachment.size,
+				FileName:    &filename,
 			},
 		}
 		if msg.attachment.voiceNote {
