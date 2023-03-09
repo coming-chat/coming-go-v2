@@ -6,8 +6,14 @@ package textsecure
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	"github.com/coming-chat/wallet-SDK/core/aptos"
+	"github.com/coming-chat/wallet-SDK/core/eth"
+	"github.com/coming-chat/wallet-SDK/core/polka"
+	"github.com/coming-chat/wallet-SDK/core/wallet"
 	"io"
 	"os"
 	"strings"
@@ -703,24 +709,22 @@ func handleReceivedMessage(env *signalservice.Envelope) error {
 			log.Errorln("failed to handle message, signalingkey has wrong version, please re-register to update your signaling-key")
 		}
 
-		p, _ := proto.Marshal(env)
-		log.Debugf("[textsecure] Incoming UnidentifiedSenderMessage %s.\n", *env.DestinationUuid)
-		data, err := crayfish.Instance.HandleEnvelope(p)
+		trustRootByte, err := base64.StdEncoding.DecodeString(config.TrustRoot)
 		if err != nil {
 			return err
 		}
-		content, err := base64.StdEncoding.DecodeString(data.Message)
+		sealSC := axolotl.NewSealedSessionCipher(sc, *axolotl.NewECPublicKey(trustRootByte[1:33]))
+		decryptedMsg, err := sealSC.Decrypt(env.GetContent(), env.GetTimestamp())
 		if err != nil {
 			return err
 		}
-		env.Content = content
-		log.Println("[textsecure] handleReceivedMessage:", data.Sender.UUID)
-		log.Debugln("[textsecure] handleReceivedMessage content length: ", len(content))
+		content := stripPadding(decryptedMsg.PaddedMessage)
+
 		if len(content) == 0 {
 			err = errors.New("[textsecure] handleReceivedMessage content length is 0")
 			return err
 		}
-		err = handleMessage("", data.Sender.UUID, uint64(data.Timestamp), content)
+		err = handleMessage(decryptedMsg.SenderE164, decryptedMsg.SenderUuid, env.GetTimestamp(), content)
 		if err != nil {
 			return err
 		}
