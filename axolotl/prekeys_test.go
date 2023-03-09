@@ -54,7 +54,7 @@ func TestPreKeyStore(t *testing.T) {
 	assert.False(t, store.containsPreKey(regid), "Store must be empty")
 
 	pkr := NewPreKeyRecord(regid, kp)
-	store.storePreKey(*pkr.Pkrs.Id, pkr)
+	store.storePreKey(pkr.Pkrs.Id, pkr)
 
 	assert.True(t, store.containsPreKey(regid), "Store must contain regid")
 
