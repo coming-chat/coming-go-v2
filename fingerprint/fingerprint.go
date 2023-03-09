@@ -1,5 +1,5 @@
 // Based on https://gist.github.com/nanu-c/f885b928b9e43a7167258dd70dc186d6 from nanu-c
-//which is based on https://github.com/signalapp/libsignal-protocol-java/blob/master/java/src/main/java/org/whispersystems/libsignal/fingerprint/NumericFingerprintGenerator.java
+// which is based on https://github.com/signalapp/libsignal-protocol-java/blob/master/java/src/main/java/org/whispersystems/libsignal/fingerprint/NumericFingerprintGenerator.java
 package fingerprint
 
 import (
@@ -34,7 +34,7 @@ func CreateFingerprint(version uint32, localStableIdentifier []byte, localIdenti
 	return fingerprintNumbers, qrFingerprint, nil
 }
 
-//I'm not particular happy with the name "CreateFingerprintSimple"
+// I'm not particular happy with the name "CreateFingerprintSimple"
 func CreateFingerprintSimple(version uint32, local string, localKey []byte, remote string, remoteKey []byte) ([]string, []byte, error) {
 
 	localStableIdentifier, localECKeys := castParameters(local, localKey)
@@ -50,7 +50,7 @@ func castParameters(identifier string, key []byte) ([]byte, []axolotl.ECPublicKe
 	return []byte(identifier), ECKeys
 }
 
-//https://github.com/signalapp/libsignal-protocol-java/blob/master/java/src/main/java/org/whispersystems/libsignal/fingerprint/NumericFingerprintGenerator.java#L104
+// https://github.com/signalapp/libsignal-protocol-java/blob/master/java/src/main/java/org/whispersystems/libsignal/fingerprint/NumericFingerprintGenerator.java#L104
 func getFingerprint(iterations int, stableIdentifier []byte, identityKeys []axolotl.ECPublicKey) []byte {
 	publicKey := getLogicalKeyBytes(identityKeys)
 	buf := new(bytes.Buffer)
@@ -76,22 +76,22 @@ func repeatedHashing(startData []byte, key []byte, iterations int) []byte {
 	return hash
 }
 
-//Based on Java MessageDigest
-//update(input):
-//"Updates the digest using the specified array of bytes."
+// Based on Java MessageDigest
+// update(input):
+// "Updates the digest using the specified array of bytes."
 func javaLikeUpdate(digest hash.Hash, data []byte) {
 	digest.Write(data)
 }
 
-//Based on Java MessageDigest
-//digest(input):
-//"Performs a final update on the digest using the specified array of bytes,
-//then completes the digest computation.
-//That is, this method first calls update(input),
-//passing the input array to the update method, then calls digest()."
-//digest():
-//"Completes the hash computation by performing final operations such as padding.
-//The digest is reset after this call is made."
+// Based on Java MessageDigest
+// digest(input):
+// "Performs a final update on the digest using the specified array of bytes,
+// then completes the digest computation.
+// That is, this method first calls update(input),
+// passing the input array to the update method, then calls digest()."
+// digest():
+// "Completes the hash computation by performing final operations such as padding.
+// The digest is reset after this call is made."
 func javaLikeDigest(digest hash.Hash, data []byte) []byte {
 	digest.Write(data)
 	result := digest.Sum(nil)
@@ -99,7 +99,7 @@ func javaLikeDigest(digest hash.Hash, data []byte) []byte {
 	return result
 }
 
-//https://github.com/signalapp/libsignal-protocol-java/blob/3662b6d705ae4162ad8b3a242daf35171edbb068/java/src/main/java/org/whispersystems/libsignal/fingerprint/NumericFingerprintGenerator.java#L122
+// https://github.com/signalapp/libsignal-protocol-java/blob/3662b6d705ae4162ad8b3a242daf35171edbb068/java/src/main/java/org/whispersystems/libsignal/fingerprint/NumericFingerprintGenerator.java#L122
 func getLogicalKeyBytes(identityKeys []axolotl.ECPublicKey) []byte {
 	// sort IdentityKeyComparator
 	sorted := sortByteArrays(identityKeys)
