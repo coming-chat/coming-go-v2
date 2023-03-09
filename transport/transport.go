@@ -78,6 +78,7 @@ type Transporter interface {
 	PostWithHeaders(url string, body []byte, contentType string, headers map[string]string) (*response, error)
 	PutWithAuth(url string, body []byte, ct string, auth string) (*response, error)
 	PatchWithAuth(url string, body []byte, ct string, auth string) (*response, error)
+	PutWithHeaders(url string, body []byte, contentType string, headers map[string]string) (*response, error)
 
 	PutJSON(url string, body []byte) (*response, error)
 	PutBinary(url string, body []byte) (*response, error)
@@ -228,6 +229,38 @@ func (ht *httpTransporter) PostWithHeaders(url string, body []byte, ct string, h
 	}
 
 	log.Debugf("[textsecure] POST %s %d\n", url, r.Status)
+
+	return r, err
+}
+
+func (ht *httpTransporter) PutWithHeaders(url string, body []byte, contentType string, headers map[string]string) (*response, error) {
+	br := bytes.NewReader(body)
+
+	req, err := http.NewRequest(http.MethodPut, ht.baseURL+url, br)
+	if err != nil {
+		return nil, err
+	}
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	if ht.userAgent != "" {
+		req.Header.Set("X-Signal-Agent", ht.userAgent)
+	}
+	req.Header.Add("Content-Type", contentType)
+	req.Header.Add("Content-Length", strconv.Itoa(len(body)))
+	req.SetBasicAuth(ht.user, ht.pass)
+	resp, err := ht.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	r := &response{}
+	if resp != nil {
+		r.Status = resp.StatusCode
+		r.Body = resp.Body
+		r.Header = &resp.Header
+	}
+
+	log.Debugf("[textsecure] PUT %s %d\n", url, r.Status)
 
 	return r, err
 }
