@@ -1,6 +1,6 @@
 package textsecure
 
-import "github.com/signal-golang/textsecure/config"
+import "github.com/coming-chat/coming-go-v2/config"
 
 // SetUsername sets the profile name
 func SetUsername(name string) {

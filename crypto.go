@@ -16,10 +16,10 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/coming-chat/coming-go-v2/axolotl"
+	"github.com/coming-chat/coming-go-v2/helpers"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
 	"github.com/golang/protobuf/proto"
-	"github.com/signal-golang/textsecure/axolotl"
-	"github.com/signal-golang/textsecure/helpers"
-	signalservice "github.com/signal-golang/textsecure/protobuf"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/curve25519"
 )

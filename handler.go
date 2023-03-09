@@ -1,9 +1,9 @@
 package textsecure
 
 import (
+	"github.com/coming-chat/coming-go-v2/groupsv2"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
 	"github.com/golang/protobuf/proto"
-	"github.com/signal-golang/textsecure/groupsv2"
-	signalservice "github.com/signal-golang/textsecure/protobuf"
 	log "github.com/sirupsen/logrus"
 )
 

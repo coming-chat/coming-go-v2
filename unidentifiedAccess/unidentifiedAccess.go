@@ -7,10 +7,10 @@ import (
 	"errors"
 	"time"
 
+	"github.com/coming-chat/coming-go-v2/config"
+	"github.com/coming-chat/coming-go-v2/contacts"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
 	"github.com/golang/protobuf/proto"
-	"github.com/signal-golang/textsecure/config"
-	"github.com/signal-golang/textsecure/contacts"
-	signalservice "github.com/signal-golang/textsecure/protobuf"
 	log "github.com/sirupsen/logrus"
 )
 

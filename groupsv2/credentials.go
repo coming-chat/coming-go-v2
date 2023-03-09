@@ -6,8 +6,8 @@ import (
 	"io"
 	"time"
 
-	signalservice "github.com/signal-golang/textsecure/protobuf"
-	transport "github.com/signal-golang/textsecure/transport"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
+	transport "github.com/coming-chat/coming-go-v2/transport"
 	"google.golang.org/protobuf/proto"
 
 	log "github.com/sirupsen/logrus"

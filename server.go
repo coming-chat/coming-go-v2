@@ -18,31 +18,31 @@ import (
 	"strings"
 	"time"
 
-	"github.com/signal-golang/textsecure/axolotl"
-	"github.com/signal-golang/textsecure/config"
-	"github.com/signal-golang/textsecure/contactDiscoveryCrypto"
-	"github.com/signal-golang/textsecure/contacts"
-	"github.com/signal-golang/textsecure/contactsDiscovery"
-	"github.com/signal-golang/textsecure/groupsv2"
-	"github.com/signal-golang/textsecure/profiles"
-	signalservice "github.com/signal-golang/textsecure/protobuf"
-	"github.com/signal-golang/textsecure/registration"
-	"github.com/signal-golang/textsecure/unidentifiedAccess"
+	"github.com/coming-chat/coming-go-v2/axolotl"
+	"github.com/coming-chat/coming-go-v2/config"
+	"github.com/coming-chat/coming-go-v2/contactDiscoveryCrypto"
+	"github.com/coming-chat/coming-go-v2/contacts"
+	"github.com/coming-chat/coming-go-v2/contactsDiscovery"
+	"github.com/coming-chat/coming-go-v2/groupsv2"
+	"github.com/coming-chat/coming-go-v2/profiles"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
+	"github.com/coming-chat/coming-go-v2/registration"
+	"github.com/coming-chat/coming-go-v2/unidentifiedAccess"
 
-	"github.com/signal-golang/textsecure/transport"
+	"github.com/coming-chat/coming-go-v2/transport"
 
 	log "github.com/sirupsen/logrus"
 )
 
 var (
 	SERVICE_REFLECTOR_HOST = "europe-west1-signal-cdn-reflector.cloudfunctions.net"
-	SIGNAL_SERVICE_URL     = "https://chat.signal.org"
-	SIGNAL_CDN_URL         = "https://cdn.signal.org"
-	SIGNAL_CDN2_URL        = "https://cdn2.signal.org"
-	DIRECTORY_URL          = "https://api.directory.signal.org"
-	STORAGE_URL            = "https://storage.signal.org"
+	SIGNAL_SERVICE_URL     = "https://coming-server-v2.coming.chat"
+	SIGNAL_CDN_URL         = "https://aws-cdn.coming-chat.io"
+	SIGNAL_CDN2_URL        = "https://google-cdn.coming.chat"
+	DIRECTORY_URL          = "https://api.directory.coming.org"
+	STORAGE_URL            = "https://coming-storage-service.coming.chat"
 
-	createAccountPath = "/v1/accounts/%s/code/%s?client=%s"
+	createAccountPath = "/v1/accounts/%s/%s?client=%s"
 	// CREATE_ACCOUNT_SMS_PATH   = "/v1/accounts/sms/code/%s?client=%s";
 	CREATE_ACCOUNT_VOICE_PATH = "/v1/accounts/voice/code/%s"
 	VERIFY_ACCOUNT_CODE_PATH  = "/v1/accounts/code/%s"

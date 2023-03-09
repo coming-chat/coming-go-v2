@@ -18,17 +18,16 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/signal-golang/textsecure/axolotl"
-	"github.com/signal-golang/textsecure/config"
-	"github.com/signal-golang/textsecure/contacts"
-	crayfish "github.com/signal-golang/textsecure/crayfish"
-	"github.com/signal-golang/textsecure/helpers"
-	"github.com/signal-golang/textsecure/profiles"
-	signalservice "github.com/signal-golang/textsecure/protobuf"
-	"github.com/signal-golang/textsecure/registration"
-	rootCa "github.com/signal-golang/textsecure/rootCa"
-	"github.com/signal-golang/textsecure/transport"
-	"github.com/signal-golang/textsecure/unidentifiedAccess"
+	"github.com/coming-chat/coming-go-v2/axolotl"
+	"github.com/coming-chat/coming-go-v2/config"
+	"github.com/coming-chat/coming-go-v2/contacts"
+	"github.com/coming-chat/coming-go-v2/helpers"
+	"github.com/coming-chat/coming-go-v2/profiles"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
+	"github.com/coming-chat/coming-go-v2/registration"
+	"github.com/coming-chat/coming-go-v2/rootCa"
+	"github.com/coming-chat/coming-go-v2/transport"
+	"github.com/coming-chat/coming-go-v2/unidentifiedAccess"
 	log "github.com/sirupsen/logrus"
 )
 

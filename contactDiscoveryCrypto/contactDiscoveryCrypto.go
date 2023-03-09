@@ -11,7 +11,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 
-	"github.com/signal-golang/textsecure/contactsDiscovery"
+	"github.com/coming-chat/coming-go-v2/contactsDiscovery"
 )
 
 type QueryEnvelope struct {

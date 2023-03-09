@@ -7,8 +7,8 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/coming-chat/coming-go-v2/config"
 	"github.com/go-yaml/yaml"
-	"github.com/signal-golang/textsecure/config"
 	log "github.com/sirupsen/logrus"
 )
 

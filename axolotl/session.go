@@ -9,10 +9,10 @@ import (
 	"errors"
 	"fmt"
 
+	protobuf "github.com/coming-chat/coming-go-v2/axolotl/protobuf"
+	"github.com/coming-chat/coming-go-v2/curve25519sign"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
 	"github.com/golang/protobuf/proto"
-	protobuf "github.com/signal-golang/textsecure/axolotl/protobuf"
-	"github.com/signal-golang/textsecure/curve25519sign"
-	signalservice "github.com/signal-golang/textsecure/protobuf"
 )
 
 type sessionState struct {

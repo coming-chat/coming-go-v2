@@ -7,7 +7,7 @@ import (
 	"crypto/hmac"
 	"errors"
 
-	protobuf "github.com/signal-golang/textsecure/axolotl/protobuf"
+	protobuf "github.com/coming-chat/coming-go-v2/axolotl/protobuf"
 
 	"github.com/golang/protobuf/proto"
 )

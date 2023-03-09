@@ -4,7 +4,7 @@ import (
 	"crypto/x509"
 	"os"
 
-	"github.com/signal-golang/textsecure/utils"
+	"github.com/coming-chat/coming-go-v2/utils"
 
 	log "github.com/sirupsen/logrus"
 )

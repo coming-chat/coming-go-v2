@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/nanu-c/zkgroup"
-	"github.com/signal-golang/textsecure/config"
-	"github.com/signal-golang/textsecure/entities"
-	signalservice "github.com/signal-golang/textsecure/protobuf"
-	"github.com/signal-golang/textsecure/utils"
+	"github.com/coming-chat/coming-go-v2/config"
+	"github.com/coming-chat/coming-go-v2/entities"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
+	"github.com/coming-chat/coming-go-v2/utils"
+	"github.com/coming-chat/zkgroup"
 	log "github.com/sirupsen/logrus"
 )
 

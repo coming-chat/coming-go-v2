@@ -1,9 +1,9 @@
 package groupsv2
 
 import (
-	zkgroup "github.com/nanu-c/zkgroup"
-	"github.com/signal-golang/textsecure/config"
-	"github.com/signal-golang/textsecure/helpers"
+	"github.com/coming-chat/coming-go-v2/config"
+	"github.com/coming-chat/coming-go-v2/helpers"
+	zkgroup "github.com/coming-chat/zkgroup"
 	log "github.com/sirupsen/logrus"
 )
 

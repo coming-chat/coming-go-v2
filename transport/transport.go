@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/signal-golang/textsecure/helpers"
-	"github.com/signal-golang/textsecure/rootCa"
+	"github.com/coming-chat/coming-go-v2/helpers"
+	"github.com/coming-chat/coming-go-v2/rootCa"
 	log "github.com/sirupsen/logrus"
 )
 

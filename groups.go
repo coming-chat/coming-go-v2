@@ -16,11 +16,11 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/signal-golang/textsecure/config"
-	"github.com/signal-golang/textsecure/contacts"
-	"github.com/signal-golang/textsecure/groupsv2"
-	groupsV2 "github.com/signal-golang/textsecure/groupsv2"
-	signalservice "github.com/signal-golang/textsecure/protobuf"
+	"github.com/coming-chat/coming-go-v2/config"
+	"github.com/coming-chat/coming-go-v2/contacts"
+	"github.com/coming-chat/coming-go-v2/groupsv2"
+	groupsV2 "github.com/coming-chat/coming-go-v2/groupsv2"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
 	"gopkg.in/yaml.v2"
 )
 

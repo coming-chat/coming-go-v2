@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/coming-chat/coming-go-v2/config"
+	"github.com/coming-chat/coming-go-v2/contacts"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
+	"github.com/coming-chat/coming-go-v2/unidentifiedAccess"
 	"github.com/golang/protobuf/proto"
-	"github.com/signal-golang/textsecure/config"
-	"github.com/signal-golang/textsecure/contacts"
-	signalservice "github.com/signal-golang/textsecure/protobuf"
-	"github.com/signal-golang/textsecure/unidentifiedAccess"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -1,8 +1,8 @@
 package textsecure
 
 import (
-	"github.com/signal-golang/textsecure/groupsv2"
-	signalservice "github.com/signal-golang/textsecure/protobuf"
+	"github.com/coming-chat/coming-go-v2/groupsv2"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
 )
 
 // Message represents a message received from the peer.

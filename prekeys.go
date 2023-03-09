@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/signal-golang/textsecure/axolotl"
-	"github.com/signal-golang/textsecure/curve25519sign"
-	"github.com/signal-golang/textsecure/helpers"
+	"github.com/coming-chat/coming-go-v2/axolotl"
+	"github.com/coming-chat/coming-go-v2/curve25519sign"
+	"github.com/coming-chat/coming-go-v2/helpers"
 	log "github.com/sirupsen/logrus"
 )
 

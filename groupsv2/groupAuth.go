@@ -3,8 +3,8 @@ package groupsv2
 import (
 	"bytes"
 
-	"github.com/signal-golang/textsecure/entities"
-	signalservice "github.com/signal-golang/textsecure/protobuf"
+	"github.com/coming-chat/coming-go-v2/entities"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
 )
 
 func isPromoteMembersPendingAdminApprovalAllowed(user *entities.GroupUser, group *GroupV2) bool {

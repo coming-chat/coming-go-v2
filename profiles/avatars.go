@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 
 	siv "github.com/Blackoverflow/gcmsiv"
-	"github.com/signal-golang/textsecure/config"
-	transport "github.com/signal-golang/textsecure/transport"
+	"github.com/coming-chat/coming-go-v2/config"
+	transport "github.com/coming-chat/coming-go-v2/transport"
 
 	"crypto/aes"
 	"crypto/cipher"

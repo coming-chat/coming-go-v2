@@ -13,14 +13,14 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/signal-golang/textsecure/axolotl"
+	"github.com/coming-chat/coming-go-v2/axolotl"
 )
 
 const ITERATIONS int = 5200
 const FINGERPRINT_VERSION int16 = 0
 
-//https://github.com/signalapp/libsignal-protocol-java/blob/fde96d22004f32a391554e4991e4e1f0a14c2d50/java/src/main/java/org/whispersystems/libsignal/fingerprint/NumericFingerprintGenerator.java#L85
-//returns: the fingerprint in blocks of five digits
+// https://github.com/signalapp/libsignal-protocol-java/blob/fde96d22004f32a391554e4991e4e1f0a14c2d50/java/src/main/java/org/whispersystems/libsignal/fingerprint/NumericFingerprintGenerator.java#L85
+// returns: the fingerprint in blocks of five digits
 func CreateFingerprint(version uint32, localStableIdentifier []byte, localIdentityKeys []axolotl.ECPublicKey, remoteStableIdentifier []byte, remoteIdentityKeys []axolotl.ECPublicKey) ([]string, []byte, error) {
 
 	lFingerprint := getFingerprint(ITERATIONS, localStableIdentifier, localIdentityKeys)

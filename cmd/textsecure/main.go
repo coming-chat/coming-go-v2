@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	textsecure "github.com/coming-chat/coming-go-v2"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -18,11 +19,10 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/coming-chat/coming-go-v2/axolotl"
+	"github.com/coming-chat/coming-go-v2/config"
+	"github.com/coming-chat/coming-go-v2/contacts"
 	"github.com/go-redis/redis"
-	"github.com/signal-golang/textsecure"
-	"github.com/signal-golang/textsecure/axolotl"
-	"github.com/signal-golang/textsecure/config"
-	"github.com/signal-golang/textsecure/contacts"
 	"golang.org/x/crypto/ssh/terminal"
 
 	log "github.com/sirupsen/logrus"

@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	axolotl "github.com/signal-golang/textsecure/axolotl"
-	textsecureCrypto "github.com/signal-golang/textsecure/crypto"
-	"github.com/signal-golang/textsecure/transport"
+	axolotl "github.com/coming-chat/coming-go-v2/axolotl"
+	textsecureCrypto "github.com/coming-chat/coming-go-v2/crypto"
+	"github.com/coming-chat/coming-go-v2/transport"
 
 	log "github.com/sirupsen/logrus"
 )

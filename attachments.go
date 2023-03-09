@@ -14,9 +14,9 @@ import (
 	"net/http"
 	"strings"
 
-	signalservice "github.com/signal-golang/textsecure/protobuf"
-	textsecure "github.com/signal-golang/textsecure/protobuf"
-	"github.com/signal-golang/textsecure/transport"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
+	textsecure "github.com/coming-chat/coming-go-v2/protobuf"
+	"github.com/coming-chat/coming-go-v2/transport"
 	log "github.com/sirupsen/logrus"
 )
 

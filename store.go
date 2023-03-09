@@ -15,9 +15,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/signal-golang/textsecure/axolotl"
-	"github.com/signal-golang/textsecure/config"
-	"github.com/signal-golang/textsecure/fingerprint"
+	"github.com/coming-chat/coming-go-v2/axolotl"
+	"github.com/coming-chat/coming-go-v2/config"
+	"github.com/coming-chat/coming-go-v2/fingerprint"
 	"golang.org/x/crypto/pbkdf2"
 
 	log "github.com/sirupsen/logrus"

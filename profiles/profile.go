@@ -10,13 +10,13 @@ import (
 	"io"
 	"math/rand"
 
-	zkgroup "github.com/nanu-c/zkgroup"
+	"github.com/coming-chat/coming-go-v2/config"
+	"github.com/coming-chat/coming-go-v2/contacts"
+	"github.com/coming-chat/coming-go-v2/crypto"
+	"github.com/coming-chat/coming-go-v2/transport"
+	"github.com/coming-chat/coming-go-v2/unidentifiedAccess"
+	zkgroup "github.com/coming-chat/zkgroup"
 	uuidUtil "github.com/satori/go.uuid"
-	"github.com/signal-golang/textsecure/config"
-	"github.com/signal-golang/textsecure/contacts"
-	"github.com/signal-golang/textsecure/crypto"
-	"github.com/signal-golang/textsecure/transport"
-	"github.com/signal-golang/textsecure/unidentifiedAccess"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -1,8 +1,8 @@
 package groupsv2
 
 import (
-	zkgroup "github.com/nanu-c/zkgroup"
-	signalservice "github.com/signal-golang/textsecure/protobuf"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
+	zkgroup "github.com/coming-chat/zkgroup"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
