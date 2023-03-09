@@ -225,6 +225,8 @@ type Client struct {
 	SyncSentHandler       func(*Message, uint64)
 	RegistrationDone      func()
 	GetUsername           func() string
+	GetMnemonic           func() string
+	SignInOrSignUp        func() string
 }
 
 var (
@@ -264,10 +266,6 @@ func Setup(c *Client) error {
 	client = c
 
 	config.ConfigFile, err = loadConfig()
-	go crayfish.Run()
-	if err != nil {
-		return err
-	}
 
 	setupLogging()
 	err = setupStore()
@@ -370,7 +368,6 @@ func Setup(c *Client) error {
 	} else {
 		log.Infoln("[textsecure] Using existing profile key credential", len(config.ConfigFile.ProfileKeyCredential))
 	}
-
 	return err
 }
 func renewSenderCertificate() error {
@@ -382,14 +379,6 @@ func renewSenderCertificate() error {
 	config.ConfigFile.Certificate = cert.Certificate
 	saveConfig(config.ConfigFile)
 	log.Debug(fmt.Sprintf("[textsecure] Sender certificate: %s", cert))
-	return nil
-
-}
-func RegisterWithCrayfish(regisrationInfo *registration.RegistrationInfo, phoneNumber, captcha string) error {
-	err := crayfish.Instance.CrayfishRegister(regisrationInfo, phoneNumber, captcha)
-	if err != nil {
-		return err
-	}
 	return nil
 
 }
@@ -405,33 +394,100 @@ func registerDevice() error {
 
 	log.Debugln("[textsecure] Crayfish registration starting")
 	client.GetConfig()
-	phoneNumber := client.GetPhoneNumber()
-	captcha := client.GetCaptchaToken()
+
+	var (
+		cid, uuid         string
+		accountAttributes *AccountAttributes
+	)
+	switch strings.ReplaceAll(strings.ToLower(client.SignInOrSignUp()), " ", "") {
+	case "signup":
+		mnemonic, err := wallet.GenMnemonic()
+		if err != nil {
+			return err
+		}
+		log.Infoln("mnemonic: ", mnemonic)
+		polkaAccount, err := polka.NewAccountWithMnemonic(mnemonic, 44)
+		if err != nil {
+			return err
+		}
+		transport.SetupTransporter(config.ConfigFile.Server, polkaAccount.Address(), registration.Registration.Password, config.ConfigFile.UserAgent, config.ConfigFile.ProxyServer)
+
+		token, _, err := requestCode(polkaAccount.PublicKeyHex(), "verification", "")
+		if err != nil {
+			return err
+		}
+		signature, err := polkaAccount.Sign([]byte(token), "")
+		if err != nil {
+			return err
+		}
+		cid, uuid, accountAttributes, err = cidRegister(token, hex.EncodeToString(signature))
+		if err != nil {
+			return err
+		}
+	case "signin":
+		mnemonic := client.GetMnemonic()
+		log.Infoln("mnemonic: ", mnemonic)
+		polkaAccount, err := polka.NewAccountWithMnemonic(mnemonic, 44)
+		if err != nil {
+			return err
+		}
+
+		ethAccount, err := eth.NewAccountWithMnemonic(mnemonic)
+		if err != nil {
+			return err
+		}
+
+		aptosAccount, err := aptos.NewAccountWithMnemonic(mnemonic)
+		if err != nil {
+			return err
+		}
+
+		transport.SetupTransporter(config.ConfigFile.Server, polkaAccount.Address(), registration.Registration.Password, config.ConfigFile.UserAgent, config.ConfigFile.ProxyServer)
+		token, err := getLoginPreMsg(LoginPrePubKeys{
+			Polka: polkaAccount.PublicKeyHex(),
+			Evm:   ethAccount.PublicKeyHex(),
+			Aptos: aptosAccount.PublicKeyHex(),
+		})
+		if err != nil {
+			return err
+		}
+
+		polkaSignature, err := polkaAccount.Sign([]byte(token), "")
+		if err != nil {
+			return err
+		}
+		ethSignature, err := ethAccount.Sign([]byte(token), "")
+		if err != nil {
+			return err
+		}
+		aptosSignature, err := aptosAccount.Sign([]byte(token), "")
+		if err != nil {
+			return err
+		}
+		cids, loginToken, err := getCids(Signatures{
+			PolkaSignature: types.HexEncodeToString(polkaSignature),
+			EvmSignature:   types.HexEncodeToString(ethSignature),
+			AptosSignature: types.HexEncodeToString(aptosSignature),
+		}, token)
+		if err != nil {
+			return err
+		}
+
+		loginCid := cids[0]
+		log.Infoln("login with cid: " + loginCid)
+		transport.SetupTransporter(config.ConfigFile.Server, loginCid, registration.Registration.Password, config.ConfigFile.UserAgent, config.ConfigFile.ProxyServer)
+		cid, uuid, accountAttributes, err = loginWithCid(loginCid, loginToken)
+		if err != nil {
+			return err
+		}
+	default:
+		return errors.New("unknown command")
+	}
 	name := client.GetUsername()
-	registration.Registration.Name = name
-	err = RegisterWithCrayfish(&registration.Registration, phoneNumber, captcha)
-	if err != nil {
-		log.Errorln("[textsecure] Crayfish registration failed", err)
-		return err
-	}
-	code := client.GetVerificationCode()
-	crayfishRegistration, err := crayfish.Instance.CrayfishRegisterWithCode(&registration.Registration, phoneNumber, captcha, code)
-	if err != nil {
-		log.Errorln("[textsecure] Crayfish registration failed", err)
-		return err
-	}
-	config.ConfigFile.Tel = crayfishRegistration.Tel
-	config.ConfigFile.UUID = crayfishRegistration.UUID
 	config.ConfigFile.Name = name
-	config.ConfigFile.AccountCapabilities = config.AccountCapabilities{
-		// Uuid:              false,
-		Gv2:               true,
-		Storage:           false,
-		Gv1Migration:      false,
-		SenderKey:         false,
-		AnnouncementGroup: true,
-		ChangeNumber:      false,
-	}
+	config.ConfigFile.Tel = cid
+	config.ConfigFile.UUID = uuid
+	config.ConfigFile.AccountCapabilities = accountAttributes.Capabilities
 
 	err = saveConfig(config.ConfigFile)
 	if err != nil {
@@ -456,6 +512,11 @@ func registerDevice() error {
 	config.ConfigFile.ProfileKey = profiles.GenerateProfileKey()
 	// config.ConfigFile = checkUUID(config.ConfigFile)
 	saveConfig(config.ConfigFile)
+
+	err = SetAccountCapabilities(accountAttributes.Capabilities)
+	if err != nil {
+		return err
+	}
 
 	client.RegistrationDone()
 	if client.RegistrationDone != nil {
