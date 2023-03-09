@@ -1,3 +1,0 @@
-[submodule "cmd/textsecure/crayfish"]
-	path = cmd/textsecure/crayfish
-	url = https://github.com/nanu-c/crayfish.git
