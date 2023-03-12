@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/coming-chat/coming-go-v2/attachments"
 	"regexp"
 
 	"github.com/coming-chat/coming-go-v2/config"
@@ -88,7 +89,7 @@ func handleSyncSent(s *signalservice.SyncMessage_Sent, ts uint64) error {
 		return err
 	}
 
-	atts, err := handleAttachments(dm)
+	atts, err := attachments.HandleAttachments(dm)
 	if err != nil {
 		return err
 	}
@@ -179,7 +180,7 @@ func sendContactUpdate() error {
 
 	}
 
-	attachmentPointer, err := uploadAttachment(&buf, "application/octet-stream")
+	attachmentPointer, err := attachments.UploadAttachment(&buf, "application/octet-stream")
 	if err != nil {
 		return err
 	}
@@ -187,12 +188,12 @@ func sendContactUpdate() error {
 	sm := &signalservice.SyncMessage{
 		Contacts: &signalservice.SyncMessage_Contacts{
 			Blob: &signalservice.AttachmentPointer{
-				CdnKey:      &attachmentPointer.cdnKey,
-				CdnNumber:   &attachmentPointer.cdnNr,
-				ContentType: &attachmentPointer.ct,
-				Key:         attachmentPointer.keys[:],
-				Digest:      attachmentPointer.digest[:],
-				Size:        &attachmentPointer.size,
+				CdnKey:      &attachmentPointer.CdnKey,
+				CdnNumber:   &attachmentPointer.CdnNr,
+				ContentType: &attachmentPointer.Ct,
+				Key:         attachmentPointer.Keys[:],
+				Digest:      attachmentPointer.Digest[:],
+				Size:        &attachmentPointer.Size,
 			},
 		},
 	}
@@ -225,7 +226,7 @@ func sendGroupUpdate() error {
 		buf.Write(b)
 	}
 
-	attachmentPointer, err := uploadAttachment(&buf, "application/octet-stream")
+	attachmentPointer, err := attachments.UploadAttachment(&buf, "application/octet-stream")
 	if err != nil {
 		return err
 	}
@@ -233,12 +234,12 @@ func sendGroupUpdate() error {
 	sm := &signalservice.SyncMessage{
 		Groups: &signalservice.SyncMessage_Groups{
 			Blob: &signalservice.AttachmentPointer{
-				CdnKey:      &attachmentPointer.cdnKey,
-				CdnNumber:   &attachmentPointer.cdnNr,
-				ContentType: &attachmentPointer.ct,
-				Key:         attachmentPointer.keys[:],
-				Digest:      attachmentPointer.digest[:],
-				Size:        &attachmentPointer.size,
+				CdnKey:      &attachmentPointer.CdnKey,
+				CdnNumber:   &attachmentPointer.CdnNr,
+				ContentType: &attachmentPointer.Ct,
+				Key:         attachmentPointer.Keys[:],
+				Digest:      attachmentPointer.Digest[:],
+				Size:        &attachmentPointer.Size,
 			},
 		},
 	}

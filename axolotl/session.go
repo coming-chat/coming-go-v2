@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/coming-chat/coming-go-v2/crypto"
 
 	protobuf "github.com/coming-chat/coming-go-v2/axolotl/protobuf"
 	"github.com/coming-chat/coming-go-v2/curve25519sign"
@@ -52,7 +53,7 @@ func (ss *sessionState) getPreviousCounter() uint32 {
 }
 
 func (ss *sessionState) setLocalIdentityPublic(key *IdentityKey) {
-	ss.SS.LocalIdentityPublic = key.Key()[:]
+	ss.SS.LocalIdentityPublic = key.ECPublicKey[:]
 }
 
 func (ss *sessionState) getLocalIdentityPublic() *IdentityKey {
@@ -60,7 +61,7 @@ func (ss *sessionState) getLocalIdentityPublic() *IdentityKey {
 }
 
 func (ss *sessionState) setRemoteIdentityPublic(key *IdentityKey) {
-	ss.SS.RemoteIdentityPublic = key.Key()[:]
+	ss.SS.RemoteIdentityPublic = key.ECPublicKey[:]
 }
 
 func (ss *sessionState) getRemoteIdentityPublic() *IdentityKey {
@@ -91,7 +92,7 @@ func (ss *sessionState) getRemoteRegistrationID() uint32 {
 	return ss.SS.RemoteRegistrationId
 }
 
-func (ss *sessionState) getSenderRatchetKey() *ECPublicKey {
+func (ss *sessionState) getSenderRatchetKey() ECPublicKey {
 	return NewECPublicKey(ss.SS.GetSenderChain().GetSenderRatchetKey())
 }
 
@@ -105,21 +106,21 @@ func (ss *sessionState) hasSenderChain() bool {
 	return ss.SS.GetSenderChain() != nil
 }
 
-func (ss *sessionState) hasReceiverChain(senderEphemeral *ECPublicKey) bool {
+func (ss *sessionState) hasReceiverChain(senderEphemeral ECPublicKey) bool {
 	rc, _ := ss.getReceiverChain(senderEphemeral)
 	return rc != nil
 }
 
-func (ss *sessionState) getReceiverChain(key *ECPublicKey) (*protobuf.SessionStructure_Chain, uint32) {
+func (ss *sessionState) getReceiverChain(key ECPublicKey) (*protobuf.SessionStructure_Chain, uint32) {
 	for i, rc := range ss.SS.ReceiverChains {
-		if bytes.Equal(key.key[:], rc.GetSenderRatchetKey()) {
+		if bytes.Equal(key[:], rc.GetSenderRatchetKey()) {
 			return rc, uint32(i)
 		}
 	}
 	return nil, 0
 }
 
-func (ss *sessionState) getReceiverChainKey(senderEphemeral *ECPublicKey) *chainKey {
+func (ss *sessionState) getReceiverChainKey(senderEphemeral ECPublicKey) *chainKey {
 	rc, _ := ss.getReceiverChain(senderEphemeral)
 	if rc == nil {
 		return nil
@@ -128,7 +129,7 @@ func (ss *sessionState) getReceiverChainKey(senderEphemeral *ECPublicKey) *chain
 
 }
 
-func (ss *sessionState) setReceiverChainKey(senderEphemeral *ECPublicKey, chainKey *chainKey) {
+func (ss *sessionState) setReceiverChainKey(senderEphemeral ECPublicKey, chainKey *chainKey) {
 	rc, _ := ss.getReceiverChain(senderEphemeral)
 	rc.ChainKey = &protobuf.SessionStructure_Chain_ChainKey{
 		Index: chainKey.Index,
@@ -136,13 +137,13 @@ func (ss *sessionState) setReceiverChainKey(senderEphemeral *ECPublicKey, chainK
 	}
 }
 
-func (ss *sessionState) addReceiverChain(senderRatchetKey *ECPublicKey, chainKey *chainKey) {
+func (ss *sessionState) addReceiverChain(senderRatchetKey ECPublicKey, chainKey *chainKey) {
 	ck := &protobuf.SessionStructure_Chain_ChainKey{Index: chainKey.Index,
 		Key: chainKey.Key[:],
 	}
 
 	c := &protobuf.SessionStructure_Chain{ChainKey: ck,
-		SenderRatchetKey: senderRatchetKey.key[:],
+		SenderRatchetKey: senderRatchetKey[:],
 	}
 	ss.SS.ReceiverChains = append(ss.SS.ReceiverChains, c)
 	if len(ss.SS.ReceiverChains) > 5 {
@@ -152,8 +153,8 @@ func (ss *sessionState) addReceiverChain(senderRatchetKey *ECPublicKey, chainKey
 
 func (ss *sessionState) setSenderChain(kp *ECKeyPair, ck *chainKey) {
 	ss.SS.SenderChain = &protobuf.SessionStructure_Chain{
-		SenderRatchetKey:        kp.PublicKey.Key()[:],
-		SenderRatchetKeyPrivate: kp.PrivateKey.Key()[:],
+		SenderRatchetKey:        kp.PublicKey[:],
+		SenderRatchetKeyPrivate: kp.PrivateKey[:],
 		ChainKey: &protobuf.SessionStructure_Chain_ChainKey{
 			Index: ck.Index,
 			Key:   ck.Key[:],
@@ -173,7 +174,7 @@ func (ss *sessionState) setSenderChainKey(ck *chainKey) {
 	}
 }
 
-func (ss *sessionState) hasMessageKeys(senderEphemeral *ECPublicKey, counter uint32) bool {
+func (ss *sessionState) hasMessageKeys(senderEphemeral ECPublicKey, counter uint32) bool {
 	rc, _ := ss.getReceiverChain(senderEphemeral)
 	if rc == nil {
 		return false
@@ -186,7 +187,7 @@ func (ss *sessionState) hasMessageKeys(senderEphemeral *ECPublicKey, counter uin
 	return false
 }
 
-func (ss *sessionState) removeMessageKeys(senderEphemeral *ECPublicKey, counter uint32) *messageKeys {
+func (ss *sessionState) removeMessageKeys(senderEphemeral ECPublicKey, counter uint32) *messageKeys {
 	rc, _ := ss.getReceiverChain(senderEphemeral)
 	if rc == nil {
 		return nil
@@ -200,7 +201,7 @@ func (ss *sessionState) removeMessageKeys(senderEphemeral *ECPublicKey, counter 
 	return nil
 }
 
-func (ss *sessionState) setMessageKeys(senderEphemeral *ECPublicKey, mk *messageKeys) {
+func (ss *sessionState) setMessageKeys(senderEphemeral ECPublicKey, mk *messageKeys) {
 	rc, _ := ss.getReceiverChain(senderEphemeral)
 	sscmk := &protobuf.SessionStructure_Chain_MessageKey{
 		CipherKey: mk.CipherKey,
@@ -215,7 +216,7 @@ func (ss *sessionState) setMessageKeys(senderEphemeral *ECPublicKey, mk *message
 type unacknowledgedPreKeyMessageItem struct {
 	preKeyID       uint32
 	signedPreKeyID int32
-	baseKey        *ECPublicKey
+	baseKey        ECPublicKey
 }
 
 func (ss *sessionState) hasUnacknowledgedPreKeyMessage() bool {
@@ -446,7 +447,7 @@ func (sb *SessionBuilder) BuildSenderSession(pkb *PreKeyBundle) error {
 		return NotTrustedError{sb.recipientID}
 	}
 	if pkb.SignedPreKeyPublic != nil &&
-		!curve25519sign.Verify(*theirIdentityKey.Key(), pkb.SignedPreKeyPublic.Serialize(), &pkb.SignedPreKeySignature) {
+		!curve25519sign.Verify(theirIdentityKey.ECPublicKey, pkb.SignedPreKeyPublic.Serialize(), &pkb.SignedPreKeySignature) {
 		return InvalidSignatureError{pkb}
 	}
 
@@ -467,9 +468,9 @@ func (sb *SessionBuilder) BuildSenderSession(pkb *PreKeyBundle) error {
 		OurBaseKey:         ourBaseKey,
 		OurIdentityKey:     ourIdentityKey,
 		TheirIdentity:      pkb.IdentityKey,
-		TheirSignedPreKey:  theirSignedPreKey,
-		TheirRatchetKey:    theirSignedPreKey,
-		TheirOneTimePreKey: theirOneTimePreKey,
+		TheirSignedPreKey:  *theirSignedPreKey,
+		TheirRatchetKey:    *theirSignedPreKey,
+		TheirOneTimePreKey: &theirOneTimePreKey,
 	}
 
 	if !sr.Fresh {
@@ -536,7 +537,7 @@ func (sc *SessionCipher) SessionEncryptMessage(plaintext []byte) ([]byte, int32,
 	}
 	senderEphemeral := ss.getSenderRatchetKey()
 	previousCounter := ss.getPreviousCounter()
-	ciphertext, err := Encrypt(messageKeys.CipherKey, messageKeys.Iv, plaintext)
+	ciphertext, err := crypto.AesEncryptWithIv(messageKeys.CipherKey, messageKeys.Iv, plaintext)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -644,7 +645,7 @@ func (ss *sessionState) decrypt(ciphertext *WhisperMessage) ([]byte, error) {
 	if !ciphertext.verifyMAC(ss.getRemoteIdentityPublic(), ss.getLocalIdentityPublic(), messageKeys.MacKey) {
 		return nil, ErrInvalidMACForWhisperMessage
 	}
-	plaintext, err := Decrypt(messageKeys.CipherKey, append(messageKeys.Iv, ciphertext.Ciphertext...))
+	plaintext, err := crypto.AesDecrypt(messageKeys.CipherKey, append(messageKeys.Iv, ciphertext.Ciphertext...))
 	if err != nil {
 		return nil, err
 	}
@@ -700,7 +701,7 @@ func (sc *SessionCipher) SessionDecryptPreKeyWhisperMessage(ciphertext *PreKeyWh
 	return plaintext, nil
 }
 
-func getOrCreateChainKey(ss *sessionState, theirEphemeral *ECPublicKey) (*chainKey, error) {
+func getOrCreateChainKey(ss *sessionState, theirEphemeral ECPublicKey) (*chainKey, error) {
 	if ss.hasReceiverChain(theirEphemeral) {
 		return ss.getReceiverChainKey(theirEphemeral), nil
 	}
@@ -739,7 +740,7 @@ func (err DuplicateMessageError) Error() string {
 	return fmt.Sprintf("duplicate message: expected %d, got %d", err.index, err.counter)
 }
 
-func getOrCreateMessageKeys(ss *sessionState, theirEphemeral *ECPublicKey, chainKey *chainKey, counter uint32) (*messageKeys, error) {
+func getOrCreateMessageKeys(ss *sessionState, theirEphemeral ECPublicKey, chainKey *chainKey, counter uint32) (*messageKeys, error) {
 	if chainKey.Index > counter {
 		if ss.hasMessageKeys(theirEphemeral, counter) {
 			return ss.removeMessageKeys(theirEphemeral, counter), nil

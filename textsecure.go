@@ -10,6 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	"github.com/coming-chat/coming-go-v2/attachments"
+	"github.com/coming-chat/coming-go-v2/constant"
+	"github.com/coming-chat/coming-go-v2/crypto"
 	"github.com/coming-chat/wallet-SDK/core/aptos"
 	"github.com/coming-chat/wallet-SDK/core/eth"
 	"github.com/coming-chat/wallet-SDK/core/polka"
@@ -40,20 +43,20 @@ import (
 // Generate a random 16 byte string used for HTTP Basic Authentication to the server
 func generatePassword() string {
 	b := make([]byte, 16)
-	randBytes(b[:])
+	crypto.RandBytes(b[:])
 	return helpers.Base64EncWithoutPadding(b)
 }
 
 // Generate a random 14 bit integer
 func generateRegistrationID() uint32 {
-	return randUint32() & 0x3fff
+	return crypto.RandUint32() & 0x3fff
 }
 
 // Generate a 256 bit AES and a 160 bit HMAC-SHA1 key
 // to be used to secure the communication with the server
 func generateSignalingKey() []byte {
 	b := make([]byte, 52)
-	randBytes(b[:])
+	crypto.RandBytes(b[:])
 	//set signaling key version
 	b[0] = 1
 	return b
@@ -95,22 +98,12 @@ func needsRegistration() bool {
 
 var identityKey *axolotl.IdentityKeyPair
 
-type attachmentPointerV3 struct {
-	cdnKey    string
-	cdnNr     uint32
-	ct        string
-	keys      []byte
-	digest    []byte
-	size      uint32
-	voiceNote bool
-}
-
 type outgoingMessage struct {
 	destination string
 	msg         string
 	group       *groupMessage
 	groupV2     *signalservice.GroupContextV2
-	attachment  *attachmentPointerV3
+	attachment  *attachments.AttachmentPointerV3
 	flags       uint32
 	expireTimer uint32
 	timestamp   *uint64
@@ -158,7 +151,7 @@ func MIMETypeFromReader(r io.Reader) (mime string, reader io.Reader) {
 // with an optional message to a given contact.
 func SendAttachment(uuid string, msg string, r io.Reader, timer uint32) (uint64, error) {
 	ct, r := MIMETypeFromReader(r)
-	a, err := uploadAttachment(r, ct)
+	a, err := attachments.UploadAttachment(r, ct)
 	if err != nil {
 		return 0, err
 	}
@@ -174,7 +167,7 @@ func SendAttachment(uuid string, msg string, r io.Reader, timer uint32) (uint64,
 // SendVoiceNote sends a voice note
 func SendVoiceNote(uuid, msg string, r io.Reader, timer uint32) (uint64, error) {
 	ct, r := MIMETypeFromReader(r)
-	a, err := uploadVoiceNote(r, ct)
+	a, err := attachments.UploadVoiceNote(r, ct)
 	if err != nil {
 		return 0, err
 	}
@@ -204,13 +197,6 @@ func EndSession(uuid string, msg string) (uint64, error) {
 	}
 	textSecureStore.DeleteAllSessions(uuidClean)
 	return ts, nil
-}
-
-// Attachment represents an attachment received from a peer
-type Attachment struct {
-	R        io.Reader
-	MimeType string
-	FileName string
 }
 
 // Client contains application specific data and callbacks.
@@ -598,7 +584,7 @@ func decryptReceivedMessage(msg []byte) ([]byte, error) {
 	aesKey := registration.Registration.SignalingKey[:32]
 	macKey := registration.Registration.SignalingKey[32:]
 	hasError := false
-	if !axolotl.ValidTruncMAC(msg[:macpos], tmac, macKey) {
+	if !crypto.VerifyMAC(macKey, msg[:macpos], tmac) {
 		hasError = true
 		//return ErrInvalidMACForMessage
 	}
@@ -609,7 +595,7 @@ func decryptReceivedMessage(msg []byte) ([]byte, error) {
 		plaintext = msg
 	} else {
 		ciphertext := msg[1:macpos]
-		plaintext, err = axolotl.Decrypt(aesKey, ciphertext)
+		plaintext, err = crypto.AesDecrypt(aesKey, ciphertext)
 		if err != nil {
 			return nil, err
 		}
@@ -713,7 +699,7 @@ func handleReceivedMessage(env *signalservice.Envelope) error {
 		if err != nil {
 			return err
 		}
-		sealSC := axolotl.NewSealedSessionCipher(sc, *axolotl.NewECPublicKey(trustRootByte[1:33]))
+		sealSC := axolotl.NewSealedSessionCipher(sc, axolotl.NewECPublicKey(trustRootByte[1:33]))
 		decryptedMsg, err := sealSC.Decrypt(env.GetContent(), env.GetTimestamp())
 		if err != nil {
 			return err

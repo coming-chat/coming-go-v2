@@ -5,23 +5,16 @@ package axolotl
 
 import (
 	"fmt"
+	"github.com/coming-chat/coming-go-v2/crypto"
 
 	"golang.org/x/crypto/curve25519"
 )
 
 // ECPrivateKey represents a 256 bit Curve25519 private key.
-type ECPrivateKey struct {
-	key [32]byte
-}
+type ECPrivateKey [32]byte
 
 // ECPublicKey represents a 256 bit Curve25519 public key.
-type ECPublicKey struct {
-	key [32]byte
-}
-
-func (pk ECPublicKey) GetKey() [32]byte {
-	return pk.key
-}
+type ECPublicKey [32]byte
 
 const djbType = 5
 
@@ -32,35 +25,25 @@ func ensureKeyLength(key []byte) {
 }
 
 // NewECPrivateKey initializes a private key with the given value.
-func NewECPrivateKey(b []byte) *ECPrivateKey {
+func NewECPrivateKey(b []byte) ECPrivateKey {
 	ensureKeyLength(b)
-	k := &ECPrivateKey{}
-	copy(k.key[:], b)
+	k := ECPrivateKey{}
+	copy(k[:], b)
 	return k
-}
-
-// Key returns the value of the private key.
-func (k *ECPrivateKey) Key() *[32]byte {
-	return &k.key
 }
 
 // NewECPublicKey initializes a public key with the given value.
-func NewECPublicKey(b []byte) *ECPublicKey {
+func NewECPublicKey(b []byte) ECPublicKey {
 	ensureKeyLength(b)
-	k := &ECPublicKey{}
-	copy(k.key[:], b)
+	k := ECPublicKey{}
+	copy(k[:], b)
 	return k
-}
-
-// Key returns the value of the public key.
-func (k *ECPublicKey) Key() *[32]byte {
-	return &k.key
 }
 
 // Serialize returns the public key prepended by the byte value 5,
 // as used in the TextSecure network protocol.
 func (k *ECPublicKey) Serialize() []byte {
-	return append([]byte{djbType}, k.key[:]...)
+	return append([]byte{djbType}, k[:]...)
 }
 
 // ECKeyPair represents a public and private key pair.
@@ -72,14 +55,14 @@ type ECKeyPair struct {
 // NewECKeyPair creates a key pair
 func NewECKeyPair() *ECKeyPair {
 	privateKey := ECPrivateKey{}
-	randBytes(privateKey.key[:])
+	crypto.RandBytes(privateKey[:])
 
-	privateKey.key[0] &= 248
-	privateKey.key[31] &= 63
-	privateKey.key[31] |= 64
+	privateKey[0] &= 248
+	privateKey[31] &= 63
+	privateKey[31] |= 64
 
 	publicKey := ECPublicKey{}
-	curve25519.ScalarBaseMult(&publicKey.key, &privateKey.key)
+	curve25519.ScalarBaseMult((*[32]byte)(&publicKey), (*[32]byte)(&privateKey))
 
 	return &ECKeyPair{
 		PrivateKey: privateKey,
@@ -90,13 +73,17 @@ func NewECKeyPair() *ECKeyPair {
 // MakeECKeyPair creates a key pair.
 func MakeECKeyPair(privateKey, publicKey []byte) *ECKeyPair {
 	return &ECKeyPair{
-		PrivateKey: *NewECPrivateKey(privateKey),
-		PublicKey:  *NewECPublicKey(publicKey),
+		PrivateKey: NewECPrivateKey(privateKey),
+		PublicKey:  NewECPublicKey(publicKey),
 	}
 }
 
 func (kp *ECKeyPair) String() string {
-	return fmt.Sprintf("Public key : % 0X\nPrivate key: % 0X\n", kp.PublicKey.Key(), kp.PrivateKey.Key())
+	return fmt.Sprintf(
+		"Public key : % 0X\nPrivate key: % 0X\n",
+		kp.PublicKey,
+		kp.PrivateKey,
+	)
 }
 
 // IdentityKey represents a Curve25519 public key used as a public identity.
@@ -108,7 +95,7 @@ type IdentityKey struct {
 func NewIdentityKey(b []byte) *IdentityKey {
 	ensureKeyLength(b)
 	k := &IdentityKey{}
-	copy(k.key[:], b)
+	copy(k.ECPublicKey[:], b)
 	return k
 }
 
@@ -121,8 +108,8 @@ type IdentityKeyPair struct {
 // NewIdentityKeyPairFromKeys initializes an identity key pair.
 func NewIdentityKeyPairFromKeys(priv, pub []byte) *IdentityKeyPair {
 	return &IdentityKeyPair{
-		PublicKey:  IdentityKey{*NewECPublicKey(pub)},
-		PrivateKey: *NewECPrivateKey(priv),
+		PublicKey:  IdentityKey{NewECPublicKey(pub)},
+		PrivateKey: NewECPrivateKey(priv),
 	}
 }
 

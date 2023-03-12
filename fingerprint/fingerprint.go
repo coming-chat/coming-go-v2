@@ -45,7 +45,7 @@ func CreateFingerprintSimple(version uint32, local string, localKey []byte, remo
 }
 
 func castParameters(identifier string, key []byte) ([]byte, []axolotl.ECPublicKey) {
-	ECKey := *axolotl.NewECPublicKey(key[1:])
+	ECKey := axolotl.NewECPublicKey(key[1:])
 	ECKeys := []axolotl.ECPublicKey{ECKey}
 	return []byte(identifier), ECKeys
 }

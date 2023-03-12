@@ -27,7 +27,7 @@ func TestKeys(t *testing.T) {
 func TestKeyPairs(t *testing.T) {
 	var pubkey, privkey [32]byte
 	ikp := GenerateIdentityKeyPair()
-	copy(privkey[:], ikp.PrivateKey.Key()[:])
+	copy(privkey[:], ikp.PrivateKey[:])
 	curve25519.ScalarBaseMult(&pubkey, &privkey)
-	assert.Equal(t, pubkey[:], ikp.PublicKey.Key()[:])
+	assert.Equal(t, pubkey[:], ikp.PublicKey.ECPublicKey[:])
 }

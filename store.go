@@ -8,6 +8,7 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
+	"github.com/coming-chat/coming-go-v2/crypto"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -72,7 +73,7 @@ func newStore(password, path string) (*store, error) {
 
 		// Create salt if this is first run
 		if !exists(saltFile) {
-			randBytes(salt)
+			crypto.RandBytes(salt)
 			err = ioutil.WriteFile(saltFile, salt, 0600)
 			if err != nil {
 				return nil, err
@@ -133,12 +134,12 @@ func (s *store) encrypt(plaintext []byte) ([]byte, error) {
 		return plaintext, nil
 	}
 
-	e, err := aesEncrypt(s.aesKey, plaintext)
+	e, err := crypto.AesEncrypt(s.aesKey, plaintext)
 	if err != nil {
 		return nil, err
 	}
 
-	return appendMAC(s.macKey, e), nil
+	return crypto.AppendMAC(s.macKey, e), nil
 }
 
 // ErrStoreBadMAC occurs when MAC verification fails on the records stored using password based encryption.
@@ -152,11 +153,11 @@ func (s *store) decrypt(ciphertext []byte) ([]byte, error) {
 
 	macPos := len(ciphertext) - 32
 
-	if !verifyMAC(s.macKey, ciphertext[:macPos], ciphertext[macPos:]) {
+	if !crypto.VerifyMAC(s.macKey, ciphertext[:macPos], ciphertext[macPos:]) {
 		return nil, ErrStoreBadMAC
 	}
 
-	return aesDecrypt(s.aesKey, ciphertext[:macPos])
+	return crypto.AesDecrypt(s.aesKey, ciphertext[:macPos])
 
 }
 
@@ -204,14 +205,14 @@ func (s *store) GetIdentityKeyPair() (*axolotl.IdentityKeyPair, error) {
 func (s *store) SetIdentityKeyPair(ikp *axolotl.IdentityKeyPair) error {
 	idkeyfile := filepath.Join(s.identityDir, "identity_key")
 	b := make([]byte, 64)
-	copy(b, ikp.PublicKey.Key()[:])
-	copy(b[32:], ikp.PrivateKey.Key()[:])
+	copy(b, ikp.PublicKey.ECPublicKey[:])
+	copy(b[32:], ikp.PrivateKey[:])
 	return s.writeFile(idkeyfile, b)
 }
 
 func (s *store) SaveIdentity(id string, key *axolotl.IdentityKey) error {
 	idkeyfile := filepath.Join(s.identityDir, "remote_"+id)
-	return s.writeFile(idkeyfile, key.Key()[:])
+	return s.writeFile(idkeyfile, key.ECPublicKey[:])
 }
 
 func (s *store) IsTrustedIdentity(id string, key *axolotl.IdentityKey) bool {
@@ -229,7 +230,7 @@ func (s *store) IsTrustedIdentity(id string, key *axolotl.IdentityKey) bool {
 	if err != nil {
 		return false
 	}
-	return bytes.Equal(b, key.Key()[:])
+	return bytes.Equal(b, key.ECPublicKey[:])
 }
 
 // MyIdentityKey returns our serialized public identity key

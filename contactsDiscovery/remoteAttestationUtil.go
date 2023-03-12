@@ -61,7 +61,7 @@ func (r *RemoteAttestation) GetAndVerifyMultiRemoteAttestation(
 	log.Debugln("[textsecure] GetAndVerifyMultiRemoteAttestation")
 
 	keyPair := axolotl.NewECKeyPair()
-	publicKey := keyPair.PublicKey.Key()
+	publicKey := keyPair.PublicKey
 	remoteAttestationRequest := RemoteAttestationRequest{
 		ClientPublic: publicKey[:],
 	}
@@ -143,16 +143,19 @@ func validateAndBuildRemoteAttestation(
 
 func remoteAttestationKeys(keyPair *axolotl.ECKeyPair, serverPublicEphemarl []byte, serverPublicStatic []byte) (*RemoteAttestationKeys, error) {
 
-	ephemeralToEphemeral := [32]byte{}
-	serverPublicEphemarlPublicKey := axolotl.NewECPublicKey(serverPublicEphemarl).GetKey()
-	axolotl.CalculateAgreement(&ephemeralToEphemeral, &serverPublicEphemarlPublicKey, keyPair.PrivateKey.Key())
+	serverPublicEphemarlPublicKey := axolotl.NewECPublicKey(serverPublicEphemarl)
+	ephemeralToEphemeral, err := axolotl.CalculateAgreement(serverPublicEphemarlPublicKey, keyPair.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
 
-	ephemeralToStatic := [32]byte{}
-	serverPublicStaticPublicKey := axolotl.NewECPublicKey(serverPublicStatic).GetKey()
-	axolotl.CalculateAgreement(&ephemeralToStatic, &serverPublicStaticPublicKey, keyPair.PrivateKey.Key())
-
+	serverPublicStaticPublicKey := axolotl.NewECPublicKey(serverPublicStatic)
+	ephemeralToStatic, err := axolotl.CalculateAgreement(serverPublicStaticPublicKey, keyPair.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
 	masterSecret := append(ephemeralToEphemeral[:], ephemeralToStatic[:]...)
-	publicKeys := append(append(keyPair.PublicKey.Key()[:], serverPublicEphemarl...), serverPublicStatic...)
+	publicKeys := append(append(keyPair.PublicKey[:], serverPublicEphemarl...), serverPublicStatic...)
 
 	keys, err := axolotl.DeriveSecrets(masterSecret, publicKeys, nil, 64)
 	if err != nil {

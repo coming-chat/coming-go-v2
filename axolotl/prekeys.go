@@ -22,8 +22,8 @@ func NewPreKeyRecord(id uint32, kp *ECKeyPair) *PreKeyRecord {
 	pkr := &PreKeyRecord{
 		&protobuf.PreKeyRecordStructure{
 			Id:         id,
-			PublicKey:  kp.PublicKey.Key()[:],
-			PrivateKey: kp.PrivateKey.Key()[:],
+			PublicKey:  kp.PublicKey[:],
+			PrivateKey: kp.PrivateKey[:],
 		},
 	}
 	return pkr
@@ -80,8 +80,8 @@ func NewSignedPreKeyRecord(id uint32, timestamp uint64, kp *ECKeyPair, signature
 	return &SignedPreKeyRecord{
 		&protobuf.SignedPreKeyRecordStructure{
 			Id:         id,
-			PublicKey:  kp.PublicKey.Key()[:],
-			PrivateKey: kp.PrivateKey.Key()[:],
+			PublicKey:  kp.PublicKey[:],
+			PrivateKey: kp.PrivateKey[:],
 			Timestamp:  timestamp,
 			Signature:  signature,
 		},
@@ -118,7 +118,7 @@ type PreKeyBundle struct {
 	DeviceID       uint32
 
 	PreKeyID     uint32
-	PreKeyPublic *ECPublicKey
+	PreKeyPublic ECPublicKey
 
 	SignedPreKeyID        int32
 	SignedPreKeyPublic    *ECPublicKey
@@ -128,8 +128,8 @@ type PreKeyBundle struct {
 }
 
 // NewPreKeyBundle creates a PreKeyBundle structure with the given fields.
-func NewPreKeyBundle(registrationID, deviceID, preKeyID uint32, preKey *ECPublicKey,
-	signedPreKeyID int32, signedPreKey *ECPublicKey, signature []byte,
+func NewPreKeyBundle(registrationID, deviceID, preKeyID uint32, preKey ECPublicKey,
+	signedPreKeyID int32, signedPreKey ECPublicKey, signature []byte,
 	identityKey *IdentityKey) (*PreKeyBundle, error) {
 	pkb := &PreKeyBundle{
 		RegistrationID:     registrationID,
@@ -137,7 +137,7 @@ func NewPreKeyBundle(registrationID, deviceID, preKeyID uint32, preKey *ECPublic
 		PreKeyID:           preKeyID,
 		PreKeyPublic:       preKey,
 		SignedPreKeyID:     signedPreKeyID,
-		SignedPreKeyPublic: signedPreKey,
+		SignedPreKeyPublic: &signedPreKey,
 		IdentityKey:        identityKey,
 	}
 	copy(pkb.SignedPreKeySignature[:], signature)

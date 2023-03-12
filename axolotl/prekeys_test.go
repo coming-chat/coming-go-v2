@@ -61,8 +61,8 @@ func TestPreKeyStore(t *testing.T) {
 	pkr, err := store.loadPreKey(regid)
 	if assert.NoError(t, err) {
 		assert.Equal(t, pkr.Pkrs.GetId(), regid, "The registration ids should be the same")
-		assert.Equal(t, pkr.Pkrs.GetPublicKey(), kp.PublicKey.Key()[:], "The public keys should be the same")
-		assert.Equal(t, pkr.Pkrs.GetPrivateKey(), kp.PrivateKey.Key()[:], "The private keys should be the same")
+		assert.Equal(t, pkr.Pkrs.GetPublicKey(), kp.PublicKey[:], "The public keys should be the same")
+		assert.Equal(t, pkr.Pkrs.GetPrivateKey(), kp.PrivateKey[:], "The private keys should be the same")
 	}
 
 	store.removePreKey(regid)

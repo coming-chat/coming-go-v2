@@ -42,15 +42,15 @@ var (
 
 // GroupV2 holds group metadata.
 type GroupV2 struct {
-	MasterKey         []byte
-	Hexid             string
-	GroupContext      signalservice.Group
-	cipher            *zkgroup.ClientZkGroupCipher
-	DecryptedGroup    *signalservice.DecryptedGroup
-	GroupAction       *signalservice.DecryptedGroupChange
-	JoinStatus        int
-	Revision          uint32
-	AnnouncementsOnly bool
+	MasterKey      []byte
+	Hexid          string
+	GroupContext   signalservice.Group
+	cipher         *zkgroup.ClientZkGroupCipher
+	DecryptedGroup *signalservice.DecryptedGroup
+	GroupAction    *signalservice.DecryptedGroupChange
+	JoinStatus     int
+	Revision       uint32
+	//AnnouncementsOnly bool
 }
 
 // idToHex returns the hex representation of the group id byte-slice
@@ -257,10 +257,12 @@ func HandleGroupsV2(src string, dm *signalservice.DataMessage) (*GroupV2, error)
 		err = saveGroupV2(hexid)
 		if err != nil {
 			log.Error("[textsecure][groupsv2] handle groupv2 save", err)
+			return nil, err
 		}
 		err = group.UpdateGroupFromServer()
 		if err != nil {
 			log.Error("[textsecure][groupsv2] error updating group change from server", err)
+			return nil, err
 		}
 		// TODO only update group on wrong revision
 	} else if string(group.GroupContext.Title) == "" {

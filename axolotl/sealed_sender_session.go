@@ -2,12 +2,13 @@ package axolotl
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
 	"errors"
 	"github.com/coming-chat/coming-go-v2/crypto"
 	"github.com/coming-chat/coming-go-v2/curve25519sign"
 	protobuf "github.com/coming-chat/coming-go-v2/protobuf"
 	"github.com/golang/protobuf/proto"
-	"golang.org/x/crypto/curve25519"
 )
 
 const CIPHERTEXT_VERSION uint8 = 1
@@ -38,7 +39,7 @@ func NewServerCertificate(wrapper *protobuf.ServerCertificate) (*ServerCertifica
 
 	return &ServerCertificate{
 		keyId:       *scc.Id,
-		key:         *NewECPublicKey(scc.Key[1:33]),
+		key:         NewECPublicKey(scc.Key[1:33]),
 		certificate: wrapper.Certificate,
 		signature:   wrapper.Signature,
 	}, nil
@@ -52,7 +53,7 @@ func (s *ServerCertificate) validate(trustRoot ECPublicKey) bool {
 	}
 	var signature [64]byte
 	copy(signature[:], s.signature)
-	return curve25519sign.Verify(trustRoot.key, s.certificate, &signature)
+	return curve25519sign.Verify(trustRoot, s.certificate, &signature)
 }
 
 type SenderCertificate struct {
@@ -87,7 +88,7 @@ func NewSenderCertificate(wrapper *protobuf.SenderCertificate) (*SenderCertifica
 	}
 	return &SenderCertificate{
 		Signer:         serverCertificate,
-		Key:            *NewECPublicKey(certificate.GetIdentityKey()[1:33]),
+		Key:            NewECPublicKey(certificate.GetIdentityKey()[1:33]),
 		SenderDeviceId: certificate.GetSenderDevice(),
 		SenderUuid:     certificate.GetSenderUuid(),
 		SenderE164:     certificate.GetSenderE164(),
@@ -109,7 +110,7 @@ func (c *CertificateValidator) validate(certificate *SenderCertificate, validati
 
 	var certSignature [64]byte
 	copy(certSignature[:], certificate.Signature)
-	if !curve25519sign.Verify(signer.key.GetKey(), certificate.Certificate, &certSignature) {
+	if !curve25519sign.Verify(signer.key, certificate.Certificate, &certSignature) {
 		return errors.New("InvalidCertificate")
 	}
 
@@ -172,21 +173,27 @@ func NewUnidentifiedSenderMessage(data []byte) (*UnidentifiedSenderMessage, erro
 		return nil, errors.New("InvalidMetadataMessageError")
 	}
 	return &UnidentifiedSenderMessage{
-		ephemeral:        *NewECPublicKey(unidentifiedSenderMessage.EphemeralPublic[1:]),
+		ephemeral:        NewECPublicKey(unidentifiedSenderMessage.EphemeralPublic[1:]),
 		encryptedStatic:  unidentifiedSenderMessage.EncryptedStatic,
 		encryptedMessage: unidentifiedSenderMessage.EncryptedMessage,
 	}, nil
 }
 
-func (s *SealedSessionCipher) calculateEphemeralKeys(publicKey ECPublicKey, privateKey ECPrivateKey, salt []byte) (*EphemeralKeys, error) {
-	var ephemeralSecret [32]byte
-	CalculateAgreement(&ephemeralSecret, &publicKey.key, &privateKey.key)
-	ephemeralDerived, err := DeriveSecrets(
+func calculateKeysAndDerived(publicKey ECPublicKey, privateKey ECPrivateKey, salt, info []byte, size int) ([]byte, error) {
+	ephemeralSecret, err := CalculateAgreement(publicKey, privateKey)
+	if err != nil {
+		return nil, err
+	}
+	return DeriveSecrets(
 		ephemeralSecret[:],
 		salt,
-		[]byte{},
-		96,
+		info,
+		size,
 	)
+}
+
+func CalculateEphemeralKeys(publicKey ECPublicKey, privateKey ECPrivateKey, salt []byte) (*EphemeralKeys, error) {
+	ephemeralDerived, err := calculateKeysAndDerived(publicKey, privateKey, salt, nil, 96)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +212,7 @@ func (s *SealedSessionCipher) decryptBytes(cipherKey, macKey, ciphertext []byte)
 	ciphertextPart1 := ciphertext[:len(ciphertext)-10]
 	theirMac := ciphertext[len(ciphertext)-10:]
 
-	if !ValidTruncMAC(ciphertextPart1, theirMac, macKey) {
+	if !crypto.VerifyMAC(macKey, ciphertextPart1, theirMac) {
 		return nil, errors.New("bad mac")
 	}
 	nonce := [16]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -213,16 +220,7 @@ func (s *SealedSessionCipher) decryptBytes(cipherKey, macKey, ciphertext []byte)
 }
 
 func (s *SealedSessionCipher) calculateStaticKeys(publicKey ECPublicKey, privateKey ECPrivateKey, salt []byte) (*StaticKeys, error) {
-	staticSecret, err := curve25519.X25519(privateKey.key[:], publicKey.key[:])
-	if err != nil {
-		return nil, err
-	}
-	staticDerived, err := DeriveSecrets(
-		staticSecret,
-		salt,
-		[]byte{},
-		96,
-	)
+	staticDerived, err := calculateKeysAndDerived(publicKey, privateKey, salt, nil, 96)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +244,7 @@ func (s *SealedSessionCipher) Decrypt(ciphertext []byte, timestamp uint64) (*Dec
 	ephemeralSalt.Write(ourIdentity.PublicKey.Serialize())
 	ephemeralSalt.Write(wrapper.ephemeral.Serialize())
 
-	ephemeralKeys, err := s.calculateEphemeralKeys(wrapper.ephemeral, ourIdentity.PrivateKey, ephemeralSalt.Bytes())
+	ephemeralKeys, err := CalculateEphemeralKeys(wrapper.ephemeral, ourIdentity.PrivateKey, ephemeralSalt.Bytes())
 
 	staticKeyBytes, err := s.decryptBytes(
 		ephemeralKeys.CipherKey,
@@ -261,7 +259,7 @@ func (s *SealedSessionCipher) Decrypt(ciphertext []byte, timestamp uint64) (*Dec
 	staticSalt := bytes.NewBuffer(ephemeralKeys.ChainKey)
 	staticSalt.Write(wrapper.encryptedStatic)
 	staticKeys, err := s.calculateStaticKeys(
-		*staticKey,
+		staticKey,
 		ourIdentity.PrivateKey,
 		staticSalt.Bytes(),
 	)
@@ -355,4 +353,46 @@ func (s *SealedSessionCipher) decryptMessageContent(message UnidentifiedSenderMe
 		SenderUuid:    message.senderCertificate.SenderUuid,
 		DeviceId:      message.senderCertificate.SenderDeviceId,
 	}, nil
+}
+
+// ProvisioningCipher
+func ProvisioningCipher(pm *protobuf.ProvisionMessage, theirPublicKey ECPublicKey) ([]byte, error) {
+	ourKeyPair := GenerateIdentityKeyPair()
+
+	version := []byte{0x01}
+	derivedSecret, err := calculateKeysAndDerived(theirPublicKey, ourKeyPair.PrivateKey, nil, []byte("TextSecure Provisioning Message"), 64)
+	if err != nil {
+		return nil, err
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	aesKey := derivedSecret[:32]
+	macKey := derivedSecret[32:]
+	message, err := proto.Marshal(pm)
+	if err != nil {
+		return nil, err
+	}
+
+	ciphertext, err := crypto.AesEncrypt(aesKey, message)
+	if err != nil {
+		return nil, err
+	}
+
+	m := hmac.New(sha256.New, macKey)
+	m.Write(append(version[:], ciphertext[:]...))
+	mac := m.Sum(nil)
+	body := []byte{}
+	body = append(body, version[:]...)
+	body = append(body, ciphertext[:]...)
+	body = append(body, mac[:]...)
+
+	pe := &protobuf.ProvisionEnvelope{
+		PublicKey: ourKeyPair.PublicKey.Serialize(),
+		Body:      body,
+	}
+
+	return proto.Marshal(pe)
 }

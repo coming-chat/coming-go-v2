@@ -185,25 +185,25 @@ func (g *GroupV2) ModifyGroup(user *entities.GroupUser, params ModifyGroupParams
 
 	}
 
-	// ModifyDescription
-	if submittedActions.ModifyDescription != nil {
-		err = groupChangeApplicator.ApplyModifyDescription(user, inviteLinkPassword, g, submittedActions.ModifyDescription, groupImmut)
-		if err != nil {
-			return nil, err
-		}
-		changeEpoch = utils.Max(changeEpoch, dESCRIPTION_CHANGE_EPOCH)
-
-	}
+	//// ModifyDescription
+	//if submittedActions.ModifyDescription != nil {
+	//	err = groupChangeApplicator.ApplyModifyDescription(user, inviteLinkPassword, g, submittedActions.ModifyDescription, groupImmut)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	changeEpoch = utils.Max(changeEpoch, dESCRIPTION_CHANGE_EPOCH)
+	//
+	//}
 
 	// ModifyAnnouncementsOnly
-	if submittedActions.ModifyAnnouncementsOnly != nil {
-		err = groupChangeApplicator.ApplyModifyAnnouncementsOnly(user, inviteLinkPassword, g, submittedActions.ModifyAnnouncementsOnly, groupImmut)
-		if err != nil {
-			return nil, err
-		}
-		changeEpoch = utils.Max(changeEpoch, aNNOUNCEMENTS_ONLY_CHANGE_EPOCH)
-
-	}
+	//if submittedActions.ModifyAnnouncementsOnly != nil {
+	//	err = groupChangeApplicator.ApplyModifyAnnouncementsOnly(user, inviteLinkPassword, g, submittedActions.ModifyAnnouncementsOnly, groupImmut)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	changeEpoch = utils.Max(changeEpoch, aNNOUNCEMENTS_ONLY_CHANGE_EPOCH)
+	//
+	//}
 
 	sourceUuid := getSourceUuid(user, g, groupImmut)
 	if len(sourceUuid) == 0 {

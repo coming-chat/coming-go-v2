@@ -1,7 +1,7 @@
 // Copyright (c) 2014 Canonical Ltd.
 // Licensed under the GPLv3, see the COPYING file for details.
 
-package textsecure
+package crypto
 
 import (
 	"testing"
@@ -11,9 +11,9 @@ import (
 
 func TestMAC(t *testing.T) {
 	key := make([]byte, 32)
-	randBytes(key)
+	RandBytes(key)
 	msg := make([]byte, 100)
-	randBytes(msg)
-	macced := appendMAC(key, msg)
-	assert.True(t, verifyMAC(key, macced[:100], macced[100:]))
+	RandBytes(msg)
+	macced := AppendMAC(key, msg)
+	assert.True(t, VerifyMAC(key, macced[:100], macced[100:]))
 }

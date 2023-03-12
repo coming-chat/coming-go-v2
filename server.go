@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/coming-chat/coming-go-v2/constant"
 	"io"
 	"mime/quotedprintable"
 	"regexp"
@@ -34,91 +35,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var (
-	SERVICE_REFLECTOR_HOST = "europe-west1-signal-cdn-reflector.cloudfunctions.net"
-	SIGNAL_SERVICE_URL     = "https://coming-server-v2.coming.chat"
-	SIGNAL_CDN_URL         = "https://aws-cdn.coming-chat.io"
-	SIGNAL_CDN2_URL        = "https://google-cdn.coming.chat"
-	DIRECTORY_URL          = "https://api.directory.coming.org"
-	STORAGE_URL            = "https://coming-storage-service.coming.chat"
-
-	createAccountPath = "/v1/accounts/%s/%s?client=%s"
-	// CREATE_ACCOUNT_SMS_PATH   = "/v1/accounts/sms/code/%s?client=%s";
-	CREATE_ACCOUNT_VOICE_PATH = "/v1/accounts/voice/code/%s"
-	VERIFY_ACCOUNT_CODE_PATH  = "/v1/accounts/code/%s"
-	registerUPSAccountPath    = "/v1/accounts/ups/"
-	TURN_SERVER_INFO          = "/v1/accounts/turn"
-	SET_ACCOUNT_ATTRIBUTES    = "/v1/accounts/attributes/"
-	PIN_PATH                  = "/v1/accounts/pin/"
-	REGISTRATION_LOCK_PATH    = "/v1/accounts/registration_lock"
-	REQUEST_PUSH_CHALLENGE    = "/v1/accounts/fcm/preauth/%s/%s"
-	WHO_AM_I                  = "/v1/accounts/whoami"
-	SET_USERNAME_PATH         = "/v1/accounts/username/%s"
-	DELETE_USERNAME_PATH      = "/v1/accounts/username"
-	DELETE_ACCOUNT_PATH       = "/v1/accounts/me"
-	CID_REGISTER              = "/v1/accounts/v2/cid/cidRegister?signature=%s&transfer=%s"
-	LOGIN_PRE_MSG             = "/v1/accounts/login/pre/message"
-	LOGIN_GET_CIDS            = "/v1/accounts/login/getAllCids?page=%d&size=%d"
-	ALL_CID_LOGIN             = "/v1/accounts/allCid/login?cid=%s&transfer=%s"
-
-	attachmentPath           = "/v2/attachments/form/upload"
-	ATTACHMENT_DOWNLOAD_PATH = "/v2/attachments/"
-
-	prekeyMetadataPath = "/v2/keys/"
-	prekeyPath         = "/v2/keys/%s"
-	prekeyDevicePath   = "/v2/keys/%s/%s"
-	signedPrekeyPath   = "/v2/keys/signed"
-
-	provisioningCodePath    = "/v1/devices/provisioning/code"
-	provisioningMessagePath = "/v1/provisioning/%s"
-	devicePath              = "/v1/devices/%s"
-
-	DIRECTORY_TOKENS_PATH   = "/v1/directory/tokens"
-	DIRECTORY_VERIFY_PATH   = "/v1/directory/%s"
-	DIRECTORY_AUTH_PATH     = "/v1/directory/auth"
-	DIRECTORY_FEEDBACK_PATH = "/v1/directory/feedback-v3/%s"
-
-	MESSAGE_PATH            = "/v1/messages/%s"
-	acknowledgeMessagePath  = "/v1/messages/%s/%d"
-	receiptPath             = "/v1/receipt/%s/%d"
-	SENDER_ACK_MESSAGE_PATH = "/v1/messages/%s/%d"
-	UUID_ACK_MESSAGE_PATH   = "/v1/messages/uuid/%s"
-	ATTACHMENT_V2_PATH      = "/v2/attachments/form/upload"
-	ATTACHMENT_V3_PATH      = "/v3/attachments/form/upload"
-
-	PROFILE_PATH          = "/v1/profile/%s"
-	PROFILE_USERNAME_PATH = "/v1/profile/username/%s"
-
-	SENDER_CERTIFICATE_PATH         = "/v1/certificate/delivery"
-	SENDER_CERTIFICATE_NO_E164_PATH = "/v1/certificate/delivery?includeE164=false"
-
-	KBS_AUTH_PATH = "/v1/backup/auth"
-
-	ATTACHMENT_KEY_DOWNLOAD_PATH = "/attachments/%s"
-	ATTACHMENT_ID_DOWNLOAD_PATH  = "/attachments/%d"
-	ATTACHMENT_UPLOAD_PATH       = "/attachments/"
-	AVATAR_UPLOAD_PATH           = ""
-
-	STICKER_MANIFEST_PATH = "/stickers/%s/manifest.proto"
-	STICKER_PATH          = "/stickers/%s/full/%d"
-
-	GROUPSV2_CREDENTIAL     = "/v1/certificate/group/%d/%d"
-	GROUPSV2_GROUP          = "/v1/groups/"
-	GROUPSV2_GROUP_PASSWORD = "/v1/groups/?inviteLinkPassword=%s"
-	GROUPSV2_GROUP_CHANGES  = "/v1/groups/logs/%s"
-	GROUPSV2_AVATAR_REQUEST = "/v1/groups/avatar/form"
-	GROUPSV2_GROUP_JOIN     = "/v1/groups/join/%s"
-	GROUPSV2_TOKEN          = "/v1/groups/token"
-
-	ATTESTATION_REQUEST = "/v1/attestation/%s"
-	DISCOVERY_REQUEST   = "/v1/discovery/%s"
-
-	SERVER_DELIVERED_TIMESTAMP_HEADER = "X-Signal-Timestamp"
-	CDS_MRENCLAVE                     = "c98e00a4e3ff977a56afefe7362a27e4961e4f19e211febfbb19b897e6b80b15"
-
-	CONTACT_DISCOVERY = "/v1/discovery/%s"
-)
-
 // Login
 type LoginPrePubKeys struct {
 	Polka string `json:"polka"`
@@ -135,7 +51,7 @@ func getLoginPreMsg(pubKeys LoginPrePubKeys) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	resp, err := transport.Transport.PutJSON(LOGIN_PRE_MSG, body)
+	resp, err := transport.Transport.PutJSON(constant.LOGIN_PRE_MSG, body)
 	if err != nil {
 		log.Errorln("[textsecure] requestCode", err)
 		return "", err
@@ -173,7 +89,7 @@ func getCids(signatures Signatures, token string) ([]string, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	path := fmt.Sprintf(LOGIN_GET_CIDS, 0, 10000)
+	path := fmt.Sprintf(constant.LOGIN_GET_CIDS, 0, 10000)
 	resp, err := transport.Transport.PutWithHeaders(path, body, "application/json", map[string]string{
 		"Cid-Token": token,
 	})
@@ -219,7 +135,7 @@ func getCids(signatures Signatures, token string) ([]string, string, error) {
 
 func loginWithCid(cid, loginToken string) (string, string, *AccountAttributes, error) {
 	log.Infoln("[textsecure] request cid login for ", cid)
-	key := identityKey.PrivateKey.Key()[:]
+	key := identityKey.PrivateKey[:]
 	unidentifiedAccessKey, err := unidentifiedAccess.DeriveAccessKeyFrom(key)
 	if err != nil {
 		log.Debugln("[textsecure] verifyCode", err)
@@ -244,7 +160,7 @@ func loginWithCid(cid, loginToken string) (string, string, *AccountAttributes, e
 		UnidentifiedAccessKey:          &unidentifiedAccessKey,
 		UnrestrictedUnidentifiedAccess: false,
 	}
-	path := fmt.Sprintf(ALL_CID_LOGIN, cid, "true")
+	path := fmt.Sprintf(constant.ALL_CID_LOGIN, cid, "true")
 	if transport.Transport == nil {
 		return "", "", nil, errors.New("[textsecure] No transport available")
 	}
@@ -286,7 +202,7 @@ const (
 
 func requestCode(tel, method, captcha string) (string, *int, error) {
 	log.Infoln("[textsecure] request pre sign message for ", tel)
-	path := fmt.Sprintf(createAccountPath, method, tel, "android")
+	path := fmt.Sprintf(constant.CreateAccountPath, method, tel, "android")
 	if captcha != "" {
 		path += "&captcha=" + captcha
 	}
@@ -357,7 +273,7 @@ type SignatureVerifyResp struct {
 
 func cidRegister(token, signature string) (string, string, *AccountAttributes, error) {
 	log.Infoln("[textsecure] request verify signature and register for address: ")
-	key := identityKey.PrivateKey.Key()[:]
+	key := identityKey.PrivateKey[:]
 	unidentifiedAccessKey, err := unidentifiedAccess.DeriveAccessKeyFrom(key)
 	if err != nil {
 		log.Debugln("[textsecure] verifyCode", err)
@@ -382,7 +298,7 @@ func cidRegister(token, signature string) (string, string, *AccountAttributes, e
 		UnidentifiedAccessKey:          &unidentifiedAccessKey,
 		UnrestrictedUnidentifiedAccess: false,
 	}
-	path := fmt.Sprintf(CID_REGISTER, signature, "true")
+	path := fmt.Sprintf(constant.CID_REGISTER, signature, "true")
 	if transport.Transport == nil {
 		return "", "", nil, errors.New("[textsecure] No transport available")
 	}
@@ -456,7 +372,7 @@ type RegistrationLockFailure struct {
 // verifyCode verificates the account with signal server
 func verifyCode(code string, pin *string, credentials *transport.AuthCredentials) (*transport.AuthCredentials, error) {
 	code = strings.Replace(code, "-", "", -1)
-	key := identityKey.PrivateKey.Key()[:]
+	key := identityKey.PrivateKey[:]
 	unidentifiedAccessKey, err := unidentifiedAccess.DeriveAccessKeyFrom(key)
 	if err != nil {
 		log.Debugln("[textsecure] verifyCode", err)
@@ -492,7 +408,7 @@ func verifyCode(code string, pin *string, credentials *transport.AuthCredentials
 	if err != nil {
 		return nil, err
 	}
-	resp, err := transport.Transport.PutJSON(fmt.Sprintf(VERIFY_ACCOUNT_CODE_PATH, code), body)
+	resp, err := transport.Transport.PutJSON(fmt.Sprintf(constant.VERIFY_ACCOUNT_CODE_PATH, code), body)
 	if err != nil {
 		log.Errorln("[textsecure] verifyCode", err)
 		return nil, err
@@ -539,7 +455,7 @@ func RegisterWithUPS(token string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := transport.Transport.PutJSON(registerUPSAccountPath, body)
+	resp, err := transport.Transport.PutJSON(constant.RegisterUPSAccountPath, body)
 	if err != nil {
 		return err
 	}
@@ -551,7 +467,7 @@ func RegisterWithUPS(token string) error {
 
 // SetAccountCapabilities lets the client decide when it's ready for new functions to support for example groupsv2
 func SetAccountCapabilities(capabilities config.AccountCapabilities) error {
-	key := identityKey.PrivateKey.Key()[:]
+	key := identityKey.PrivateKey[:]
 	unidentifiedAccessKey, err := unidentifiedAccess.DeriveAccessKeyFrom(key)
 	if err != nil {
 		log.Errorln("[textsecure] SetAccountCapabilities ceating unidentifiedAccessKey: ", err)
@@ -586,7 +502,7 @@ func setAccountAttributes(attributes *UpdateAccountAttributes) error {
 	if err != nil {
 		return err
 	}
-	resp, err := transport.Transport.PutJSON(SET_ACCOUNT_ATTRIBUTES, body)
+	resp, err := transport.Transport.PutJSON(constant.SET_ACCOUNT_ATTRIBUTES, body)
 	if err != nil {
 		return err
 	}
@@ -646,7 +562,7 @@ func GetGroupV2MembersForGroup(group string) ([]*signalservice.DecryptedMember, 
 // GetMyUUID returns the uid from the current user
 func GetMyUUID() (string, error) {
 	log.Debugln("[textsecure] get my uuid")
-	resp, err := transport.Transport.Get(WHO_AM_I)
+	resp, err := transport.Transport.Get(constant.WHO_AM_I)
 	if err != nil {
 		return "", err
 	}
@@ -664,7 +580,7 @@ type jsonDeviceCode struct {
 }
 
 func getNewDeviceVerificationCode() (string, error) {
-	resp, err := transport.Transport.Get(provisioningCodePath)
+	resp, err := transport.Transport.Get(constant.ProvisioningCodePath)
 	if err != nil {
 		return "", err
 	}
@@ -689,7 +605,7 @@ func getLinkedDevices() ([]DeviceInfo, error) {
 
 	devices := &jsonDevices{}
 
-	resp, err := transport.Transport.Get(fmt.Sprintf(devicePath, ""))
+	resp, err := transport.Transport.Get(fmt.Sprintf(constant.DevicePath, ""))
 	if err != nil {
 		return devices.DeviceList, err
 	}
@@ -704,7 +620,7 @@ func getLinkedDevices() ([]DeviceInfo, error) {
 }
 
 func unlinkDevice(id int) error {
-	_, err := transport.Transport.Del(fmt.Sprintf(devicePath, strconv.Itoa(id)))
+	_, err := transport.Transport.Del(fmt.Sprintf(constant.DevicePath, strconv.Itoa(id)))
 	if err != nil {
 		return err
 	}
@@ -721,13 +637,13 @@ func addNewDevice(ephemeralId, publicKey, verificationCode string) error {
 
 	pm := &signalservice.ProvisionMessage{
 		AciIdentityKeyPublic:  identityKey.PublicKey.Serialize(),
-		AciIdentityKeyPrivate: identityKey.PrivateKey.Key()[:],
-		Aci:                   &config.ConfigFile.UUID,
+		AciIdentityKeyPrivate: identityKey.PrivateKey[:],
+		Uuid:                  &config.ConfigFile.UUID,
 		ProvisioningCode:      &verificationCode,
 		Number:                &config.ConfigFile.Tel,
 	}
 
-	ciphertext, err := provisioningCipher(pm, theirPublicKey)
+	ciphertext, err := axolotl.ProvisioningCipher(pm, theirPublicKey)
 	if err != nil {
 		return err
 	}
@@ -739,7 +655,7 @@ func addNewDevice(ephemeralId, publicKey, verificationCode string) error {
 		return err
 	}
 
-	url := fmt.Sprintf(provisioningMessagePath, ephemeralId)
+	url := fmt.Sprintf(constant.ProvisioningMessagePath, ephemeralId)
 	resp, err := transport.Transport.PutJSON(url, body)
 	if err != nil {
 		return err
@@ -796,7 +712,7 @@ func registerPreKeys() error {
 		return err
 	}
 
-	resp, err := transport.Transport.PutJSON(prekeyMetadataPath, body)
+	resp, err := transport.Transport.PutJSON(constant.PrekeyMetadataPath, body)
 	if err != nil {
 		return err
 	}
@@ -831,7 +747,7 @@ func getContactDiscoveryRegisteredUsers(authorization string, request *contactDi
 		return nil, err
 	}
 	resp, err := transport.DirectoryTransport.PutJSONWithAuthCookies(
-		fmt.Sprintf(CONTACT_DISCOVERY, mrenclave),
+		fmt.Sprintf(constant.CONTACT_DISCOVERY, mrenclave),
 		body,
 		authorization,
 		cookies,
@@ -897,12 +813,12 @@ func GetRegisteredContacts() ([]contacts.Contact, error) {
 		return nil, fmt.Errorf("no valid phone numbers")
 	}
 
-	authCredentials, err := transport.GetCredendtails(DIRECTORY_AUTH_PATH)
+	authCredentials, err := transport.GetCredendtails(constant.DIRECTORY_AUTH_PATH)
 	if err != nil {
 		return nil, fmt.Errorf("could not get auth credentials %v", err)
 	}
 	remoteAttestation := contactsDiscovery.RemoteAttestation{}
-	attestations, err := remoteAttestation.GetAndVerifyMultiRemoteAttestation(CDS_MRENCLAVE,
+	attestations, err := remoteAttestation.GetAndVerifyMultiRemoteAttestation(constant.CDS_MRENCLAVE,
 		authCredentials.AsBasic(),
 	)
 	if err != nil {
@@ -915,7 +831,7 @@ func GetRegisteredContacts() ([]contacts.Contact, error) {
 	}
 	log.Debugln("[textsecure] GetRegisteredContacts contactDiscoveryRequest")
 
-	response, err := getContactDiscoveryRegisteredUsers(authCredentials.AsBasic(), request, remoteAttestation.Cookies, CDS_MRENCLAVE)
+	response, err := getContactDiscoveryRegisteredUsers(authCredentials.AsBasic(), request, remoteAttestation.Cookies, constant.CDS_MRENCLAVE)
 	if err != nil {
 		return nil, fmt.Errorf("could not get get ContactDiscovery %v", err)
 	}
@@ -960,22 +876,9 @@ func GetRegisteredContacts() ([]contacts.Contact, error) {
 	return localContacts, nil
 }
 
-// Attachment handling
-type attachmentV3UploadAttributes struct {
-	Cdn                  uint32            `json:"cdn"`
-	Key                  string            `json:"key"`
-	Headers              map[string]string `json:"headers"`
-	SignedUploadLocation string            `json:"signedUploadLocation"`
-}
-
 type jsonAllocation struct {
 	ID       uint64 `json:"id"`
 	Location string `json:"location"`
-}
-
-func getProfileLocation(profilePath string) (string, error) {
-	cdn := SIGNAL_CDN_URL
-	return cdn + fmt.Sprintf(profilePath), nil
 }
 
 // Messages
@@ -1003,21 +906,21 @@ func createMessage(msg *outgoingMessage) *signalservice.DataMessage {
 	if msg.attachment != nil {
 		// todo send file names
 		filename := ""
-		if msg.attachment.voiceNote {
+		if msg.attachment.VoiceNote {
 			filename = "voice.mp3"
 		}
 		dm.Attachments = []*signalservice.AttachmentPointer{
 			{
-				CdnKey:      &msg.attachment.cdnKey,
-				CdnNumber:   &msg.attachment.cdnNr,
-				ContentType: &msg.attachment.ct,
-				Key:         msg.attachment.keys[:],
-				Digest:      msg.attachment.digest[:],
-				Size:        &msg.attachment.size,
+				CdnKey:      &msg.attachment.CdnKey,
+				CdnNumber:   &msg.attachment.CdnNr,
+				ContentType: &msg.attachment.Ct,
+				Key:         msg.attachment.Keys[:],
+				Digest:      msg.attachment.Digest[:],
+				Size:        &msg.attachment.Size,
 				FileName:    &filename,
 			},
 		}
-		if msg.attachment.voiceNote {
+		if msg.attachment.VoiceNote {
 			var flag uint32 = 1
 			dm.Attachments[0].Flags = &flag
 		}
@@ -1141,7 +1044,7 @@ func buildAndSendMessage(uuid string, paddedMessage []byte, isSync bool, timesta
 	if err != nil {
 		return nil, err
 	}
-	resp, err := transport.Transport.PutJSON(fmt.Sprintf(MESSAGE_PATH, uuid), body)
+	resp, err := transport.Transport.PutJSON(fmt.Sprintf(constant.MESSAGE_PATH, uuid), body)
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@ package axolotl
 import (
 	"crypto/hmac"
 	"errors"
+	"github.com/coming-chat/coming-go-v2/crypto"
 
 	protobuf "github.com/coming-chat/coming-go-v2/axolotl/protobuf"
 
@@ -15,7 +16,7 @@ import (
 // WhisperMessage represents the encrypted message format used in TextSecure.
 type WhisperMessage struct {
 	Version         byte
-	RatchetKey      *ECPublicKey
+	RatchetKey      ECPublicKey
 	Counter         uint32
 	PreviousCounter uint32
 	Ciphertext      []byte
@@ -71,7 +72,7 @@ func LoadWhisperMessage(serialized []byte) (*WhisperMessage, error) {
 	return wm, nil
 }
 
-func newWhisperMessage(messageVersion byte, macKey []byte, ratchetKey *ECPublicKey,
+func newWhisperMessage(messageVersion byte, macKey []byte, ratchetKey ECPublicKey,
 	counter, previousCounter uint32, ciphertext []byte,
 	senderIdentity, receiverIdentity *IdentityKey) (*WhisperMessage, error) {
 
@@ -113,7 +114,7 @@ func getMac(version byte, senderIdentity, receiverIdentity *IdentityKey, macKey,
 		msg = append(msg, receiverIdentity.Serialize()...)
 	}
 	msg = append(msg, serialized...)
-	return ComputeTruncatedMAC(msg, macKey, macLength)
+	return crypto.ComputeTruncatedMAC(msg, macKey, macLength)
 }
 
 func (wm *WhisperMessage) verifyMAC(senderIdentity, receiverIdentity *IdentityKey, macKey []byte) bool {
@@ -135,7 +136,7 @@ type PreKeyWhisperMessage struct {
 	RegistrationID uint32
 	PreKeyID       uint32
 	SignedPreKeyID uint32
-	BaseKey        *ECPublicKey
+	BaseKey        ECPublicKey
 	IdentityKey    *IdentityKey
 	Message        *WhisperMessage
 	serialized     []byte
@@ -183,7 +184,7 @@ func LoadPreKeyWhisperMessage(serialized []byte) (*PreKeyWhisperMessage, error) 
 	return pkwm, nil
 }
 
-func newPreKeyWhisperMessage(messageVersion byte, registrationID, preKeyID, signedPreKeyID uint32, baseKey *ECPublicKey, identityKey *IdentityKey, wm *WhisperMessage) (*PreKeyWhisperMessage, error) {
+func newPreKeyWhisperMessage(messageVersion byte, registrationID, preKeyID, signedPreKeyID uint32, baseKey ECPublicKey, identityKey *IdentityKey, wm *WhisperMessage) (*PreKeyWhisperMessage, error) {
 
 	ppkwm := &protobuf.PreKeySignalMessage{
 		RegistrationId: &registrationID,

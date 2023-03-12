@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/coming-chat/coming-go-v2/attachments"
+	"github.com/coming-chat/coming-go-v2/crypto"
 	"io"
 	"io/ioutil"
 	"os"
@@ -129,7 +131,7 @@ func updateGroup(gr *signalservice.GroupContext) error {
 	av := gr.GetAvatar()
 	buf := new(bytes.Buffer)
 	if av != nil {
-		att, err := handleSingleAttachment(av)
+		att, err := attachments.HandleSingleAttachment(av)
 		if err != nil {
 			return err
 		}
@@ -202,7 +204,7 @@ func GetContactForTel(tel string) *contacts.Contact {
 	}
 	return nil
 }
-func sendGroupV2Helper(hexid string, msg string, attachmentPointer *attachmentPointerV3, timer uint32) (uint64, error) {
+func sendGroupV2Helper(hexid string, msg string, attachmentPointer *attachments.AttachmentPointerV3, timer uint32) (uint64, error) {
 	var ts uint64
 	var err error
 	g := groupsV2.FindGroup(hexid)
@@ -250,7 +252,7 @@ func sendGroupV2Helper(hexid string, msg string, attachmentPointer *attachmentPo
 	return ts, nil
 }
 
-func sendGroupHelper(hexid string, msg string, attachmentPointer *attachmentPointerV3, timer uint32) (uint64, error) {
+func sendGroupHelper(hexid string, msg string, attachmentPointer *attachments.AttachmentPointerV3, timer uint32) (uint64, error) {
 	var ts uint64
 	var err error
 	g, ok := groups[hexid]
@@ -312,7 +314,7 @@ func SendGroupMessage(hexid string, msg string, timer uint32) (uint64, error) {
 // SendGroupAttachment sends an attachment to a given group.
 func SendGroupAttachment(hexid string, msg string, r io.Reader, timer uint32) (uint64, error) {
 	ct, r := MIMETypeFromReader(r)
-	attachmentPointer, err := uploadAttachment(r, ct)
+	attachmentPointer, err := attachments.UploadAttachment(r, ct)
 	if err != nil {
 		return 0, err
 	}
@@ -322,7 +324,7 @@ func SendGroupAttachment(hexid string, msg string, r io.Reader, timer uint32) (u
 // SendGroupVoiceNote sends an voice note to a group
 func SendGroupVoiceNote(hexid string, msg string, r io.Reader, timer uint32) (uint64, error) {
 	ct, r := MIMETypeFromReader(r)
-	attachmentPointer, err := uploadVoiceNote(r, ct)
+	attachmentPointer, err := attachments.UploadVoiceNote(r, ct)
 	if err != nil {
 		return 0, err
 	}
@@ -330,7 +332,7 @@ func SendGroupVoiceNote(hexid string, msg string, r io.Reader, timer uint32) (ui
 }
 func newGroupID() []byte {
 	id := make([]byte, 16)
-	randBytes(id)
+	crypto.RandBytes(id)
 	return id
 }
 

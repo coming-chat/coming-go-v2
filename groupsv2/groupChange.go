@@ -25,32 +25,32 @@ func NewGroupChangeApplicator(g *GroupValidator) *GroupChangeApplicator {
 	}
 }
 
-func (g *GroupChangeApplicator) ApplyModifyAnnouncementsOnly(user *entities.GroupUser,
-	inviteLinkPassword []byte,
-	group *GroupV2,
-	action *signalservice.GroupChange_Actions_ModifyAnnouncementsOnlyAction, groupImmut *GroupV2) error {
+//func (g *GroupChangeApplicator) ApplyModifyAnnouncementsOnly(user *entities.GroupUser,
+//	inviteLinkPassword []byte,
+//	group *GroupV2,
+//	action *signalservice.GroupChange_Actions_ModifyAnnouncementsOnlyAction, groupImmut *GroupV2) error {
+//
+//	if !isModifyAnnouncementsOnlyAllowed(user, groupImmut) {
+//		return entities.Status(http.StatusForbidden, "!isModifyAnnouncementsOnlyAllowed")
+//	}
+//	group.AnnouncementsOnly = action.AnnouncementsOnly
+//
+//	return nil
+//}
 
-	if !isModifyAnnouncementsOnlyAllowed(user, groupImmut) {
-		return entities.Status(http.StatusForbidden, "!isModifyAnnouncementsOnlyAllowed")
-	}
-	group.AnnouncementsOnly = action.AnnouncementsOnly
-
-	return nil
-}
-
-func (g *GroupChangeApplicator) ApplyModifyDescription(user *entities.GroupUser,
-	inviteLinkPassword []byte,
-	group *GroupV2,
-	action *signalservice.GroupChange_Actions_ModifyDescriptionAction, groupImmut *GroupV2) error {
-
-	if !isModifyAttributesAllowed(user, groupImmut) {
-		return entities.Status(http.StatusForbidden, "!isModifyAttributesAllowed")
-	}
-	// todo byte to string
-	group.DecryptedGroup.Description = string(action.Description[:])
-
-	return nil
-}
+//func (g *GroupChangeApplicator) ApplyModifyDescription(user *entities.GroupUser,
+//	inviteLinkPassword []byte,
+//	group *GroupV2,
+//	action *signalservice.GroupChange_Actions_ModifyDescriptionAction, groupImmut *GroupV2) error {
+//
+//	if !isModifyAttributesAllowed(user, groupImmut) {
+//		return entities.Status(http.StatusForbidden, "!isModifyAttributesAllowed")
+//	}
+//	// todo byte to string
+//	group.DecryptedGroup.Description = string(action.Description[:])
+//
+//	return nil
+//}
 
 func (g *GroupChangeApplicator) ApplyModifyInviteLinkPassword(user *entities.GroupUser,
 	inviteLinkPassword []byte,

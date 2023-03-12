@@ -6,6 +6,7 @@ package textsecure
 
 import (
 	"fmt"
+	"github.com/coming-chat/coming-go-v2/crypto"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -50,7 +51,7 @@ type preKeyResponse struct {
 var preKeys *preKeyState
 
 func randID() uint32 {
-	return randUint32() & 0xffffff
+	return crypto.RandUint32() & 0xffffff
 }
 
 func generatepreKeyEntity(record *axolotl.PreKeyRecord) *preKeyEntity {
@@ -113,9 +114,9 @@ func generateSignedPreKey() *axolotl.SignedPreKeyRecord {
 	kp := axolotl.NewECKeyPair()
 	id := getNextSignedPreKeyID()
 	var random [64]byte
-	randBytes(random[:])
-	priv := identityKey.PrivateKey.Key()
-	signature := curve25519sign.Sign(priv, kp.PublicKey.Serialize(), random)
+	crypto.RandBytes(random[:])
+	priv := identityKey.PrivateKey
+	signature := curve25519sign.Sign((*[32]byte)(&priv), kp.PublicKey.Serialize(), random)
 	record := axolotl.NewSignedPreKeyRecord(id, uint64(time.Now().UnixNano()*1000), kp, signature[:])
 	textSecureStore.StoreSignedPreKey(id, record)
 	return record
@@ -170,7 +171,7 @@ func makePreKeyBundle(UUID string, deviceID uint32) (*axolotl.PreKeyBundle, erro
 
 	d := pkr.Devices[0]
 	preKeyId := uint32(0)
-	var preKey *axolotl.ECPublicKey
+	var preKey axolotl.ECPublicKey
 	if d.PreKey == nil {
 		log.Debugln("[textsecure] makePreKeyBundle", fmt.Errorf("no prekey for contact %s, device %d", UUID, deviceID))
 	} else {

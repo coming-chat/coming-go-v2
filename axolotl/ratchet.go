@@ -17,9 +17,9 @@ type aliceAxolotlParameters struct {
 	OurBaseKey     *ECKeyPair
 
 	TheirIdentity      *IdentityKey
-	TheirSignedPreKey  *ECPublicKey
+	TheirSignedPreKey  ECPublicKey
 	TheirOneTimePreKey *ECPublicKey
-	TheirRatchetKey    *ECPublicKey
+	TheirRatchetKey    ECPublicKey
 }
 
 type bobAxolotlParameters struct {
@@ -28,7 +28,7 @@ type bobAxolotlParameters struct {
 	OurOneTimePreKey *ECKeyPair
 	OurRatchetKey    *ECKeyPair
 
-	TheirBaseKey  *ECPublicKey
+	TheirBaseKey  ECPublicKey
 	TheirIdentity *IdentityKey
 }
 
@@ -43,9 +43,11 @@ func newRootKey(key []byte) *rootKey {
 	return rk
 }
 
-func (r *rootKey) createChain(theirRatchetKey *ECPublicKey, ourRatchetKey *ECKeyPair) (*derivedKeys, error) {
-	var keyMaterial [32]byte
-	calculateAgreement(&keyMaterial, theirRatchetKey.Key(), ourRatchetKey.PrivateKey.Key())
+func (r *rootKey) createChain(theirRatchetKey ECPublicKey, ourRatchetKey *ECKeyPair) (*derivedKeys, error) {
+	keyMaterial, err := CalculateAgreement(theirRatchetKey, ourRatchetKey.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
 	b, err := DeriveSecrets(keyMaterial[:], r.Key[:], []byte("WhisperRatchet"), 64)
 	if err != nil {
 		return nil, err
@@ -156,13 +158,8 @@ var diversifier = [32]byte{
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 
-func calculateAgreement(result, theirPub, ourPriv *[32]byte) {
-	curve25519.ScalarMult(result, ourPriv, theirPub)
-}
-
-// CalculateAgreement
-func CalculateAgreement(result, theirPub, ourPriv *[32]byte) {
-	calculateAgreement(result, theirPub, ourPriv)
+func CalculateAgreement(theirPub, ourPriv [32]byte) ([]byte, error) {
+	return curve25519.X25519(ourPriv[:], theirPub[:])
 }
 
 func initializeSenderSession(ss *sessionState, version byte, parameters aliceAxolotlParameters) error {
@@ -171,19 +168,30 @@ func initializeSenderSession(ss *sessionState, version byte, parameters aliceAxo
 	ss.setRemoteIdentityPublic(parameters.TheirIdentity)
 
 	result := make([]byte, 0, 32*5)
-	var sharedKey [32]byte
 	if version >= 3 {
 		result = append(result, diversifier[:]...)
 	}
-	calculateAgreement(&sharedKey, parameters.TheirSignedPreKey.Key(), parameters.OurIdentityKey.PrivateKey.Key())
+	sharedKey, err := CalculateAgreement(parameters.TheirSignedPreKey, parameters.OurIdentityKey.PrivateKey)
+	if err != nil {
+		return err
+	}
 	result = append(result, sharedKey[:]...)
-	calculateAgreement(&sharedKey, parameters.TheirIdentity.Key(), parameters.OurBaseKey.PrivateKey.Key())
+	sharedKey, err = CalculateAgreement(parameters.TheirIdentity.ECPublicKey, parameters.OurBaseKey.PrivateKey)
+	if err != nil {
+		return err
+	}
 	result = append(result, sharedKey[:]...)
-	calculateAgreement(&sharedKey, parameters.TheirSignedPreKey.Key(), parameters.OurBaseKey.PrivateKey.Key())
+	sharedKey, err = CalculateAgreement(parameters.TheirSignedPreKey, parameters.OurBaseKey.PrivateKey)
+	if err != nil {
+		return err
+	}
 	result = append(result, sharedKey[:]...)
 
-	if version >= 3 && parameters.TheirOneTimePreKey != nil {
-		calculateAgreement(&sharedKey, parameters.TheirOneTimePreKey.Key(), parameters.OurBaseKey.PrivateKey.Key())
+	if version >= 3 && len(parameters.TheirOneTimePreKey) != 0 {
+		sharedKey, err = CalculateAgreement(*parameters.TheirOneTimePreKey, parameters.OurBaseKey.PrivateKey)
+		if err != nil {
+			return err
+		}
 		result = append(result, sharedKey[:]...)
 	}
 
@@ -210,19 +218,30 @@ func initializeReceiverSession(ss *sessionState, version byte, parameters bobAxo
 	ss.setLocalIdentityPublic(&parameters.OurIdentityKey.PublicKey)
 	ss.setRemoteIdentityPublic(parameters.TheirIdentity)
 	result := make([]byte, 0, 32*5)
-	var sharedKey [32]byte
 	if version >= 3 {
 		result = append(result, diversifier[:]...)
 	}
-	calculateAgreement(&sharedKey, parameters.TheirIdentity.Key(), parameters.OurSignedPreKey.PrivateKey.Key())
+	sharedKey, err := CalculateAgreement(parameters.TheirIdentity.ECPublicKey, parameters.OurSignedPreKey.PrivateKey)
+	if err != nil {
+		return err
+	}
 	result = append(result, sharedKey[:]...)
-	calculateAgreement(&sharedKey, parameters.TheirBaseKey.Key(), parameters.OurIdentityKey.PrivateKey.Key())
+	sharedKey, err = CalculateAgreement(parameters.TheirBaseKey, parameters.OurIdentityKey.PrivateKey)
+	if err != nil {
+		return err
+	}
 	result = append(result, sharedKey[:]...)
-	calculateAgreement(&sharedKey, parameters.TheirBaseKey.Key(), parameters.OurSignedPreKey.PrivateKey.Key())
+	sharedKey, err = CalculateAgreement(parameters.TheirBaseKey, parameters.OurSignedPreKey.PrivateKey)
+	if err != nil {
+		return err
+	}
 	result = append(result, sharedKey[:]...)
 
 	if version >= 3 && parameters.OurOneTimePreKey != nil {
-		calculateAgreement(&sharedKey, parameters.TheirBaseKey.Key(), parameters.OurOneTimePreKey.PrivateKey.Key())
+		sharedKey, err = CalculateAgreement(parameters.TheirBaseKey, parameters.OurOneTimePreKey.PrivateKey)
+		if err != nil {
+			return err
+		}
 		result = append(result, sharedKey[:]...)
 	}
 	dk, err := calculateDerivedKeys(version, result)

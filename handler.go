@@ -78,7 +78,7 @@ func handleDataMessage(src string, srcUUID string, timestamp uint64, dm *signals
 		return err
 	}
 
-	atts, err := handleAttachments(dm)
+	atts, err := attachments.HandleAttachments(dm)
 	if err != nil {
 		return err
 	}
