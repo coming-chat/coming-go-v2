@@ -6,8 +6,8 @@ require (
 	github.com/Blackoverflow/gcmsiv v0.0.0-20201031155123-20af2af977ff
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.0
 	github.com/coming-chat/wallet-SDK v0.2.7-0.20230223034542-c48952df2cb1
-	github.com/coming-chat/zkgroup v0.7.0-4
-	github.com/go-redis/redis v6.15.7+incompatible
+	github.com/coming-chat/zkgroup v0.7.0-5
+	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
@@ -63,6 +63,7 @@ require (
 	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
 	github.com/dgraph-io/ristretto v0.0.3 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/drand/kyber v1.1.4 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/dvsekhvalnov/jose2go v1.5.0 // indirect
@@ -108,7 +109,6 @@ require (
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/mtibben/percent v0.2.1 // indirect
 	github.com/novifinancial/serde-reflection/serde-generate/runtime/golang v0.0.0-20210526181959-1694c58d103e // indirect
-	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.27.1 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
