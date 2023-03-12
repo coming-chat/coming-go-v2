@@ -2,6 +2,7 @@ package config
 
 // Config holds application configuration settings
 type Config struct {
+	Mnemonic                  string              `yaml:"mnemonic"`
 	Tel                       string              `yaml:"tel"` // Our telephone number
 	UUID                      string              `yaml:"uuid" default:"notset"`
 	Server                    string              `yaml:"server"`                    // The TextSecure server URL
@@ -19,8 +20,9 @@ type Config struct {
 	ProfileKey                []byte              `yaml:"profileKey"`                // The profile key is used in many places to encrypt the avatar, name etc and also in groupsv2 context
 	ProfileKeyCredential      []byte              `yaml:"profileKeyCredential"`      // The profile key is used in many places to encrypt the avatar, name etc and also in groupsv2 context
 	Name                      string              `yaml:"name"`                      // The username
-	UnidentifiedAccessKey     []byte              `yaml:"unidentifiedAccessKey"`     // The access key for unidentified users
-	Certificate               []byte              `yaml:"certificate"`               // The access key for unidentified users
+	Avatar                    string              `yaml:"avatar"`
+	UnidentifiedAccessKey     []byte              `yaml:"unidentifiedAccessKey"` // The access key for unidentified users
+	Certificate               []byte              `yaml:"certificate"`           // The access key for unidentified users
 	CrayfishSupport           bool                `yaml:"crayfishSupport"`
 	Group                     struct {
 		MaxGroupSize                   int

@@ -34,28 +34,37 @@ import (
 // or send all messages received to redis
 
 var (
-	echo         bool
-	to           string
-	group        bool
-	message      string
-	attachment   string
-	newgroup     string
-	updategroup  string
-	leavegroup   string
-	endsession   bool
-	showdevices  bool
-	linkdevice   string
-	unlinkdevice int
-	configDir    string
-	stress       int
-	hook         string
-	raw          bool
-	gateway      bool
-	bind         string
-	redismode    bool
-	redisbind    string
-	redispw      string
-	redisdb      int
+	echo              bool
+	to                string
+	group             bool
+	message           string
+	attachment        string
+	newgroup          string
+	updategroup       string
+	leavegroup        string
+	endsession        bool
+	showdevices       bool
+	linkdevice        string
+	unlinkdevice      int
+	configDir         string
+	stress            int
+	hook              string
+	raw               bool
+	gateway           bool
+	bind              string
+	redismode         bool
+	redisbind         string
+	redispw           string
+	redisdb           int
+	redisMsgRecTopic  string
+	redisMsgRelyTopic string
+	useGroup          bool
+	signInOrUp        bool
+	postgresMode      bool
+	postgresBind      string
+	postgresUesr      string
+	postgresPw        string
+	postgresDB        string
 )
 
 func init() {
@@ -81,6 +90,15 @@ func init() {
 	flag.StringVar(&redisbind, "redisbind", "redis:6379", "bind address and port for redis")
 	flag.StringVar(&redispw, "redispw", "", "redis password")
 	flag.IntVar(&redisdb, "redisdb", 0, "redis database")
+	flag.StringVar(&redisMsgRecTopic, "redismrect", "", "receive message push to redis topic")
+	flag.StringVar(&redisMsgRelyTopic, "redismrelt", "", "listen topic to push message")
+	flag.BoolVar(&useGroup, "usegroup", false, "use group ?")
+	flag.BoolVar(&signInOrUp, "signinorup", false, "sign in is true, sign up is false")
+	flag.BoolVar(&postgresMode, "postgrsemode", false, "save message in postgresDB")
+	flag.StringVar(&postgresBind, "postgresbind", "", "postgres url")
+	flag.StringVar(&postgresUesr, "postgresuser", "postgres", "postgres username")
+	flag.StringVar(&postgresPw, "postgrespw", "", "postgres password")
+	flag.StringVar(&postgresDB, "postgresdb", "coming_message", "postgres db name")
 }
 
 var (
@@ -142,11 +160,9 @@ func getUsername() string {
 func getLocalContacts() ([]contacts.Contact, error) {
 	return contacts.ReadContacts(configDir + "/contacts.yml")
 }
-func getMnemonic() string {
-	return readLine("input mnemonic")
-}
-func signInOrSignUp() string {
-	return readLine("sign in/sign up")
+
+func getAvatarPath() string {
+	return readLine("get avatar local path> ")
 }
 
 func sendMessageToRedis(rmsg RedisMessage) {
@@ -160,7 +176,7 @@ func sendMessageToRedis(rmsg RedisMessage) {
 		DB:       redisdb,
 	})
 	log.Debug("Publishing message to redis")
-	client.Publish("messages", b)
+	client.Publish(client.Context(), "messages", b)
 }
 
 func sendMessage(isGroup bool, to, message string) error {
@@ -529,11 +545,10 @@ func main() {
 		CallMessageHandler:    callMessageHandler,
 		SyncReadHandler:       syncReadHandler,
 		SyncSentHandler:       syncSentHandler,
-		GetMnemonic:           getMnemonic,
-		SignInOrSignUp:        signInOrSignUp,
+		GetAvatarPath:         getAvatarPath,
 	}
 
-	err := textsecure.Setup(client)
+	err := textsecure.Setup(client, signInOrUp)
 	if err != nil {
 		log.Fatal(err)
 	}

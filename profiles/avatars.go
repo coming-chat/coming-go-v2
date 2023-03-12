@@ -1,6 +1,7 @@
 package profiles
 
 import (
+	"crypto/rand"
 	"fmt"
 	"io"
 	"os"
@@ -126,6 +127,15 @@ func decryptAvatar(avatar []byte, identityKey []byte) ([]byte, error) {
 		return nil, err
 	}
 	return decryptedAvatar, nil
+}
+
+func encryptAvatar(avatar, identityKey []byte) ([]byte, error) {
+	nonce := make([]byte, NONCE_LEN)
+	_, err := rand.Read(nonce)
+	if err != nil {
+		return nil, err
+	}
+	return encrypt(identityKey[:32], avatar, nonce)
 }
 
 func decrypt(key, data, nonce []byte) ([]byte, error) {

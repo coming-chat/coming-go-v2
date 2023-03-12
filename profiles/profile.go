@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/coming-chat/coming-go-v2/attachments"
+	protobuf "github.com/coming-chat/coming-go-v2/protobuf"
 	"io"
 	"math/rand"
 
@@ -52,7 +54,7 @@ func uuidToByte(id string) []byte {
 }
 
 // UpdateProfile ...
-func UpdateProfile(profileKey []byte, uuid, name string) error {
+func UpdateProfile(profileKey, avatar []byte, uuid, name string) error {
 	log.Debugln("[textsecure] UpdateProfile", uuid, name)
 	uuidByte := uuidToByte(uuid)
 
@@ -72,8 +74,12 @@ func UpdateProfile(profileKey []byte, uuid, name string) error {
 	profile.Version = string(version[:])
 	profile.Commitment = commitment
 	profile.Name = nameCiphertext
-	profile.Avatar = false
-	err = writeOwnProfile(profile)
+	if len(avatar) == 0 {
+		profile.Avatar = false
+	} else {
+		profile.Avatar = true
+	}
+	avatarUploadInfo, err := writeOwnProfile(profile)
 	if err != nil {
 		return err
 	}
@@ -82,23 +88,46 @@ func UpdateProfile(profileKey []byte, uuid, name string) error {
 		return err
 	}
 	config.ConfigFile.AccountCapabilities = myProfile.Capabilities
+	if profile.Avatar && avatarUploadInfo != nil {
+		identityKeyByte, err := base64.StdEncoding.DecodeString(myProfile.IdentityKey)
+		if err != nil {
+			return err
+		}
+		encryptedAvatar, err := encryptAvatar(avatar, identityKeyByte)
+		if err != nil {
+			return err
+		}
+		err = attachments.UploadProfileAvatar(encryptedAvatar, avatarUploadInfo)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 // WriteProfile ...
-func writeOwnProfile(profile ProfileSettings) error {
+func writeOwnProfile(profile ProfileSettings) (*protobuf.AvatarUploadAttributes, error) {
 	body, err := json.Marshal(profile)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	response, err := transport.Transport.PutJSON(fmt.Sprintf(PROFILE_PATH, ""), body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if response.IsError() {
-		return response
+		return nil, response
 	}
-	return nil
+	if !profile.Avatar {
+		return nil, nil
+	}
+	respJson := json.NewDecoder(response.Body)
+	respBody := &protobuf.AvatarUploadAttributes{}
+	err = respJson.Decode(respBody)
+	if err != nil {
+		return nil, err
+	}
+	return respBody, nil
 }
 
 func encryptName(key, input []byte, paddedLength int) ([]byte, error) {

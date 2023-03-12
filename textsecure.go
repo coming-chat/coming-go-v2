@@ -19,6 +19,7 @@ import (
 	"github.com/coming-chat/wallet-SDK/core/wallet"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"bytes"
@@ -217,8 +218,7 @@ type Client struct {
 	SyncSentHandler       func(*Message, uint64)
 	RegistrationDone      func()
 	GetUsername           func() string
-	GetMnemonic           func() string
-	SignInOrSignUp        func() string
+	GetAvatarPath         func() string
 }
 
 var (
@@ -253,7 +253,7 @@ func setupLogging() {
 }
 
 // Setup initializes the package.
-func Setup(c *Client) error {
+func Setup(c *Client, signInOrUp bool) error {
 	var err error
 	client = c
 
@@ -283,7 +283,7 @@ func Setup(c *Client) error {
 			return err
 		}
 
-		err = registerDevice()
+		err = registerDevice(signInOrUp)
 		if err != nil {
 			return err
 		}
@@ -319,6 +319,11 @@ func Setup(c *Client) error {
 	// config.ConfigFile = checkUUID(config.ConfigFile)
 	profileChanged := false
 	// check for a profileKey
+	if config.ConfigFile.Avatar == "" {
+		config.ConfigFile.Avatar = client.GetAvatarPath()
+		saveConfig(config.ConfigFile)
+		profileChanged = true
+	}
 	if len(config.ConfigFile.ProfileKey) == 0 {
 		config.ConfigFile.ProfileKey = profiles.GenerateProfileKey()
 		saveConfig(config.ConfigFile)
@@ -330,12 +335,24 @@ func Setup(c *Client) error {
 		profileChanged = true
 		saveConfig(config.ConfigFile)
 	}
+	var avatar []byte
+	if config.ConfigFile.Avatar != "" {
+		avatarFile := filepath.Join(config.ConfigFile.Avatar)
+		f, err := os.Open(avatarFile)
+		if err != nil {
+			return err
+		}
+		avatar, err = io.ReadAll(f)
+		if err != nil {
+			return err
+		}
+	}
 	if profileChanged {
-		profiles.UpdateProfile(config.ConfigFile.ProfileKey, config.ConfigFile.UUID, config.ConfigFile.Name)
+		profiles.UpdateProfile(config.ConfigFile.ProfileKey, avatar, config.ConfigFile.UUID, config.ConfigFile.Name)
 	} else {
 		config.ConfigFile.ProfileKey = profiles.GenerateProfileKey()
 		saveConfig(config.ConfigFile)
-		profiles.UpdateProfile(config.ConfigFile.ProfileKey, config.ConfigFile.UUID, config.ConfigFile.Name)
+		profiles.UpdateProfile(config.ConfigFile.ProfileKey, avatar, config.ConfigFile.UUID, config.ConfigFile.Name)
 	}
 
 	// check for unidentified access
@@ -355,7 +372,7 @@ func Setup(c *Client) error {
 	}
 	if len(config.ConfigFile.ProfileKeyCredential) == 0 {
 		log.Infoln("[textsecure] Generating profile key credential")
-		profiles.UpdateProfile(config.ConfigFile.ProfileKey, config.ConfigFile.UUID, config.ConfigFile.Name)
+		profiles.UpdateProfile(config.ConfigFile.ProfileKey, avatar, config.ConfigFile.UUID, config.ConfigFile.Name)
 		profile, err := profiles.GetProfileAndCredential(config.ConfigFile.UUID, config.ConfigFile.ProfileKey)
 		if err != nil {
 			return err
@@ -381,7 +398,7 @@ func renewSenderCertificate() error {
 
 }
 
-func registerDevice() error {
+func registerDevice(signInOrUp bool) error {
 	log.Debugln("[texsecure] register Device")
 	var err error
 	config.ConfigFile, err = loadConfig()
@@ -396,13 +413,16 @@ func registerDevice() error {
 	var (
 		cid, uuid         string
 		accountAttributes *AccountAttributes
+		mnemonic          = config.ConfigFile.Mnemonic
 	)
-	switch strings.ReplaceAll(strings.ToLower(client.SignInOrSignUp()), " ", "") {
-	case "signup":
-		mnemonic, err := wallet.GenMnemonic()
-		if err != nil {
-			return err
+	if signInOrUp {
+		if mnemonic == "" {
+			mnemonic, err = wallet.GenMnemonic()
+			if err != nil {
+				return err
+			}
 		}
+
 		log.Infoln("mnemonic: ", mnemonic)
 		polkaAccount, err := polka.NewAccountWithMnemonic(mnemonic, 44)
 		if err != nil {
@@ -422,8 +442,7 @@ func registerDevice() error {
 		if err != nil {
 			return err
 		}
-	case "signin":
-		mnemonic := client.GetMnemonic()
+	} else {
 		log.Infoln("mnemonic: ", mnemonic)
 		polkaAccount, err := polka.NewAccountWithMnemonic(mnemonic, 44)
 		if err != nil {
@@ -472,14 +491,20 @@ func registerDevice() error {
 		}
 
 		loginCid := cids[0]
+		if config.ConfigFile.Tel != "" {
+			for _, v := range cids {
+				if config.ConfigFile.Tel == v {
+					loginCid = v
+				}
+			}
+		}
+
 		log.Infoln("login with cid: " + loginCid)
 		transport.SetupTransporter(config.ConfigFile.Server, loginCid, registration.Registration.Password, config.ConfigFile.UserAgent, config.ConfigFile.ProxyServer)
 		cid, uuid, accountAttributes, err = loginWithCid(loginCid, loginToken)
 		if err != nil {
 			return err
 		}
-	default:
-		return errors.New("unknown command")
 	}
 	name := client.GetUsername()
 	config.ConfigFile.Name = name
