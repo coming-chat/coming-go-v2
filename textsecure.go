@@ -304,11 +304,17 @@ func Setup(c *Client) error {
 	client.RegistrationDone()
 	rootCa.SetupCA(config.ConfigFile.RootCA)
 	transport.SetupTransporter(config.ConfigFile.Server, config.ConfigFile.UUID, registration.Registration.Password, config.ConfigFile.UserAgent, config.ConfigFile.ProxyServer)
-	transport.SetupCDNTransporter(SIGNAL_CDN2_URL, config.ConfigFile.UUID, registration.Registration.Password, config.ConfigFile.UserAgent, config.ConfigFile.ProxyServer)
-	transport.SetupDirectoryTransporter(DIRECTORY_URL, config.ConfigFile.UUID, registration.Registration.Password, config.ConfigFile.UserAgent, config.ConfigFile.ProxyServer)
-	transport.SetupStorageTransporter(STORAGE_URL, config.ConfigFile.UUID, registration.Registration.Password, config.ConfigFile.UserAgent, config.ConfigFile.ProxyServer)
-	transport.SetupServiceTransporter(SIGNAL_SERVICE_URL, config.ConfigFile.UUID, registration.Registration.Password, config.ConfigFile.UserAgent, config.ConfigFile.ProxyServer)
+	transport.SetupCDNTransporter(constant.SIGNAL_CDN2_URL, config.ConfigFile.UUID, registration.Registration.Password, config.ConfigFile.UserAgent, config.ConfigFile.ProxyServer)
+	transport.SetupDirectoryTransporter(constant.DIRECTORY_URL, config.ConfigFile.UUID, registration.Registration.Password, config.ConfigFile.UserAgent, config.ConfigFile.ProxyServer)
+	transport.SetupStorageTransporter(constant.STORAGE_URL, config.ConfigFile.UUID, registration.Registration.Password, config.ConfigFile.UserAgent, config.ConfigFile.ProxyServer)
+	transport.SetupServiceTransporter(constant.SIGNAL_SERVICE_URL, config.ConfigFile.UUID, registration.Registration.Password, config.ConfigFile.UserAgent, config.ConfigFile.ProxyServer)
 	identityKey, err = textSecureStore.GetIdentityKeyPair()
+
+	num, err := GetKeysNum()
+	if err != nil {
+		return err
+	}
+	log.Infof("[textsecure] Now has %d keys\n", num)
 	// check if we have a uuid and if not get it
 	// config.ConfigFile = checkUUID(config.ConfigFile)
 	profileChanged := false

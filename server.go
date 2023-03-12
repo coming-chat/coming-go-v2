@@ -722,10 +722,30 @@ func registerPreKeys() error {
 	return nil
 }
 
+func GetKeysNum() (int64, error) {
+	resp, err := transport.Transport.Get(constant.PrekeyMetadataPath)
+	if err != nil {
+		return 0, err
+	}
+	if resp.IsError() {
+		return 0, resp
+	}
+	body := json.NewDecoder(resp.Body)
+	body.UseNumber()
+	count := &struct {
+		Count int64 `json:"count"`
+	}{}
+	err = body.Decode(count)
+	if err != nil {
+		return 0, err
+	}
+	return count.Count, nil
+}
+
 // GET /v2/keys/{number}/{device_id}?relay={relay}
 func getPreKeys(UUID string, deviceID string) (*preKeyResponse, error) {
 	log.Debugln("getPreKeys", UUID, deviceID)
-	resp, err := transport.Transport.Get(fmt.Sprintf(prekeyDevicePath, UUID, deviceID))
+	resp, err := transport.Transport.Get(fmt.Sprintf(constant.PrekeyDevicePath, UUID, deviceID))
 	if err != nil {
 		return nil, err
 	}
