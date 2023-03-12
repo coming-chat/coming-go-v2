@@ -1,11 +1,14 @@
 package textsecure
 
 import (
+	"github.com/coming-chat/coming-go-v2/attachments"
 	"github.com/coming-chat/coming-go-v2/groupsv2"
 	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
 	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
 )
+
+var UseGroup bool
 
 func handleMessage(srcE164 string, srcUUID string, timestamp uint64, b []byte) error {
 
@@ -83,10 +86,14 @@ func handleDataMessage(src string, srcUUID string, timestamp uint64, dm *signals
 		return err
 	}
 	log.Debugln("[textsecure] handleDataMessage", timestamp, *dm.Timestamp, dm.GetExpireTimer())
-	gr2, err := groupsv2.HandleGroupsV2(src, dm)
-	if err != nil {
-		return err
+	var gr2 *groupsv2.GroupV2 = nil
+	if UseGroup {
+		gr2, err = groupsv2.HandleGroupsV2(src, dm)
+		if err != nil {
+			return err
+		}
 	}
+
 	msg := &Message{
 		source:                  src,
 		sourceUUID:              srcUUID,

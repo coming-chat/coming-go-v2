@@ -512,6 +512,7 @@ var telToName map[string]string
 
 func main() {
 	flag.Parse()
+	textsecure.UseGroup = useGroup
 	client := &textsecure.Client{
 		GetConfig:             getConfig,
 		GetLocalContacts:      getLocalContacts,
