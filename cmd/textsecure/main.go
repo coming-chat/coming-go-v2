@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	textsecure "github.com/coming-chat/coming-go-v2"
+	"github.com/coming-chat/coming-go-v2/database"
 	"github.com/coming-chat/coming-go-v2/groupsv2"
 	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
 	cache "github.com/coming-chat/coming-go-v2/redis"
@@ -97,7 +98,7 @@ func init() {
 	flag.StringVar(&redisMsgRelyTopic, "redismrelt", "", "listen topic to push message")
 	flag.BoolVar(&useGroup, "usegroup", false, "use group ?")
 	flag.BoolVar(&signInOrUp, "signinorup", false, "sign in is true, sign up is false")
-	flag.BoolVar(&postgresMode, "postgrsemode", false, "save message in postgresDB")
+	flag.BoolVar(&postgresMode, "postgresmode", false, "save message in postgresDB")
 	flag.StringVar(&postgresBind, "postgresbind", "", "postgres url")
 	flag.StringVar(&postgresUesr, "postgresuser", "postgres", "postgres username")
 	flag.StringVar(&postgresPw, "postgrespw", "", "postgres password")
@@ -171,7 +172,7 @@ func getAvatarPath() string {
 func sendMessageToRedis(to, msg, source, uuid string, timestamp uint64, groupV2 *groupsv2.GroupV2, quote *signalservice.DataMessage_Quote, reaction *signalservice.DataMessage_Reaction) {
 	groupName := ""
 	if groupV2 != nil {
-		groupName = string(groupV2.GroupContext.Title)
+		groupName = groupV2.DecryptedGroup.Title
 	}
 	quoteMsg := make(map[string]interface{})
 	if quote != nil {
@@ -180,17 +181,14 @@ func sendMessageToRedis(to, msg, source, uuid string, timestamp uint64, groupV2 
 		quoteMsg["uuid"] = quote.GetAuthorUuid()
 		quoteMsg["text"] = quote.GetText()
 	}
-	reactionMsg := make(map[string]interface{})
-	if reaction != nil {
-		reactionMsg["emoji"] = reaction.GetEmoji()
-		reactionMsg["remove"] = reaction.GetRemove()
-		reactionMsg["cid"] = reaction.GetAuthorE164()
-		reactionMsg["uuid"] = reaction.GetTargetAuthorUuid()
-		reactionMsg["timestamp"] = reaction.GetTargetSentTimestamp()
+	quoteB, err := json.Marshal(quoteMsg)
+	if err != nil {
+		log.Errorf("push message to redis failed: %v", err)
 	}
-	err := cache.RedisClient.PushMessageToStream(&redis.XAddArgs{
+
+	err = cache.RedisClient.PushMessageToStream(&redis.XAddArgs{
 		Stream:     redisMsgRecTopic,
-		NoMkStream: true,
+		NoMkStream: false,
 		Values: map[string]interface{}{
 			"from":      to,
 			"message":   msg,
@@ -198,8 +196,7 @@ func sendMessageToRedis(to, msg, source, uuid string, timestamp uint64, groupV2 
 			"uuid":      uuid,
 			"timestamp": timestamp,
 			"group":     groupName,
-			"quote":     quoteMsg,
-			"reaction":  reactionMsg,
+			"quote":     string(quoteB),
 		},
 	})
 	if err != nil {
@@ -289,6 +286,8 @@ func messageHandler(msg *textsecure.Message) {
 		if !raw {
 			fmt.Printf("\r%s\n>", pretty(msg))
 		}
+	} else {
+		return
 	}
 
 	for _, a := range msg.Attachments {
@@ -305,6 +304,12 @@ func messageHandler(msg *textsecure.Message) {
 		}
 		if !redismode {
 			go conversationLoop(isGroup)
+		}
+	}
+	if postgresMode {
+		err := database.DB.SavaMessage(msg)
+		if err != nil {
+			log.Errorf("save message %v on db err: %v", msg, err)
 		}
 	}
 	if redismode {
@@ -577,6 +582,13 @@ func main() {
 	}
 	if redismode {
 		err := cache.NewClient(redisbind, redispw, redisdb)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if postgresMode {
+		err := database.NewDB(postgresBind, postgresUesr, postgresPw, postgresDB)
 		if err != nil {
 			log.Fatal(err)
 		}
