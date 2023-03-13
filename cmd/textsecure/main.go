@@ -6,6 +6,10 @@ import (
 	"flag"
 	"fmt"
 	textsecure "github.com/coming-chat/coming-go-v2"
+	"github.com/coming-chat/coming-go-v2/groupsv2"
+	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
+	cache "github.com/coming-chat/coming-go-v2/redis"
+	"github.com/go-redis/redis/v8"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -22,7 +26,6 @@ import (
 	"github.com/coming-chat/coming-go-v2/axolotl"
 	"github.com/coming-chat/coming-go-v2/config"
 	"github.com/coming-chat/coming-go-v2/contacts"
-	"github.com/go-redis/redis/v8"
 	"golang.org/x/crypto/ssh/terminal"
 
 	log "github.com/sirupsen/logrus"
@@ -165,18 +168,43 @@ func getAvatarPath() string {
 	return readLine("get avatar local path> ")
 }
 
-func sendMessageToRedis(rmsg RedisMessage) {
-	b, err := json.Marshal(rmsg)
-	if err != nil {
-		log.Fatal(err)
+func sendMessageToRedis(to, msg, source, uuid string, timestamp uint64, groupV2 *groupsv2.GroupV2, quote *signalservice.DataMessage_Quote, reaction *signalservice.DataMessage_Reaction) {
+	groupName := ""
+	if groupV2 != nil {
+		groupName = string(groupV2.GroupContext.Title)
 	}
-	client := redis.NewClient(&redis.Options{
-		Addr:     redisbind,
-		Password: redispw,
-		DB:       redisdb,
+	quoteMsg := make(map[string]interface{})
+	if quote != nil {
+		quoteMsg["id"] = quote.GetId()
+		quoteMsg["cid"] = quote.GetAuthorE164()
+		quoteMsg["uuid"] = quote.GetAuthorUuid()
+		quoteMsg["text"] = quote.GetText()
+	}
+	reactionMsg := make(map[string]interface{})
+	if reaction != nil {
+		reactionMsg["emoji"] = reaction.GetEmoji()
+		reactionMsg["remove"] = reaction.GetRemove()
+		reactionMsg["cid"] = reaction.GetAuthorE164()
+		reactionMsg["uuid"] = reaction.GetTargetAuthorUuid()
+		reactionMsg["timestamp"] = reaction.GetTargetSentTimestamp()
+	}
+	err := cache.RedisClient.PushMessageToStream(&redis.XAddArgs{
+		Stream:     redisMsgRecTopic,
+		NoMkStream: true,
+		Values: map[string]interface{}{
+			"from":      to,
+			"message":   msg,
+			"cid":       source,
+			"uuid":      uuid,
+			"timestamp": timestamp,
+			"group":     groupName,
+			"quote":     quoteMsg,
+			"reaction":  reactionMsg,
+		},
 	})
-	log.Debug("Publishing message to redis")
-	client.Publish(client.Context(), "messages", b)
+	if err != nil {
+		log.Errorf("push message to redis failed: %v", err)
+	}
 }
 
 func sendMessage(isGroup bool, to, message string) error {
@@ -546,6 +574,12 @@ func main() {
 		SyncReadHandler:       syncReadHandler,
 		SyncSentHandler:       syncSentHandler,
 		GetAvatarPath:         getAvatarPath,
+	}
+	if redismode {
+		err := cache.NewClient(redisbind, redispw, redisdb)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	err := textsecure.Setup(client, signInOrUp)
