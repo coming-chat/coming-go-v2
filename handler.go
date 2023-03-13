@@ -43,10 +43,10 @@ func handleMessage(srcE164 string, srcUUID string, timestamp uint64, b []byte) e
 func handleTypingMessage(src string, srcUUID string, timestamp uint64, cm *signalservice.TypingMessage) error {
 
 	msg := &Message{
-		source:     src,
-		sourceUUID: srcUUID,
-		message:    "typingMessage",
-		timestamp:  timestamp,
+		Source:     src,
+		SourceUUID: srcUUID,
+		Message:    "typingMessage",
+		Timestamp:  timestamp,
 	}
 
 	if client.TypingMessageHandler != nil {
@@ -56,16 +56,16 @@ func handleTypingMessage(src string, srcUUID string, timestamp uint64, cm *signa
 }
 func handleReceiptMessage(src string, srcUUID string, timestamp uint64, cm *signalservice.ReceiptMessage) error {
 	msg := &Message{
-		source:     src,
-		sourceUUID: srcUUID,
-		message:    "sentReceiptMessage",
-		timestamp:  cm.GetTimestamp()[0],
+		Source:     src,
+		SourceUUID: srcUUID,
+		Message:    "sentReceiptMessage",
+		Timestamp:  cm.GetTimestamp()[0],
 	}
 	if *cm.Type == signalservice.ReceiptMessage_READ {
-		msg.message = "readReceiptMessage"
+		msg.Message = "readReceiptMessage"
 	}
 	if *cm.Type == signalservice.ReceiptMessage_DELIVERY {
-		msg.message = "deliveryReceiptMessage"
+		msg.Message = "deliveryReceiptMessage"
 	}
 	if client.ReceiptMessageHandler != nil {
 		client.ReceiptMessageHandler(msg)
@@ -86,30 +86,31 @@ func handleDataMessage(src string, srcUUID string, timestamp uint64, dm *signals
 		return err
 	}
 	log.Debugln("[textsecure] handleDataMessage", timestamp, *dm.Timestamp, dm.GetExpireTimer())
-	var gr2 *groupsv2.GroupV2 = nil
-	if UseGroup {
-		gr2, err = groupsv2.HandleGroupsV2(src, dm)
-		if err != nil {
-			return err
-		}
+	if !UseGroup && dm.GetGroupV2() != nil {
+		return nil
+	}
+
+	gr2, err := groupsv2.HandleGroupsV2(src, dm)
+	if err != nil {
+		return err
 	}
 
 	msg := &Message{
-		source:                  src,
-		sourceUUID:              srcUUID,
-		message:                 dm.GetBody(),
-		attachments:             atts,
-		groupV2:                 gr2,
-		flags:                   flags,
-		expireTimer:             dm.GetExpireTimer(),
-		profileKey:              dm.GetProfileKey(),
-		timestamp:               dm.GetTimestamp(),
-		quote:                   dm.GetQuote(),
-		contact:                 dm.GetContact(),
-		sticker:                 dm.GetSticker(),
-		reaction:                dm.GetReaction(),
-		requiredProtocolVersion: dm.GetRequiredProtocolVersion(),
-		isViewOnce:              dm.GetIsViewOnce(),
+		Source:                  src,
+		SourceUUID:              srcUUID,
+		Message:                 dm.GetBody(),
+		Attachments:             atts,
+		GroupV2:                 gr2,
+		Flags:                   flags,
+		ExpireTimer:             dm.GetExpireTimer(),
+		ProfileKey:              dm.GetProfileKey(),
+		Timestamp:               dm.GetTimestamp(),
+		Quote:                   dm.GetQuote(),
+		Contact:                 dm.GetContact(),
+		Sticker:                 dm.GetSticker(),
+		Reaction:                dm.GetReaction(),
+		RequiredProtocolVersion: dm.GetRequiredProtocolVersion(),
+		IsViewOnce:              dm.GetIsViewOnce(),
 	}
 
 	if client.MessageHandler != nil {
@@ -145,10 +146,10 @@ func handleCallMessage(src string, srcUUID string, timestamp uint64, cm *signals
 	}
 
 	msg := &Message{
-		source:     src,
-		sourceUUID: srcUUID,
-		message:    message,
-		timestamp:  timestamp,
+		Source:     src,
+		SourceUUID: srcUUID,
+		Message:    message,
+		Timestamp:  timestamp,
 	}
 
 	if client.MessageHandler != nil {

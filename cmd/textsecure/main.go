@@ -239,11 +239,11 @@ func syncReadHandler(text string, id uint64) {
 
 func messageHandler(msg *textsecure.Message) {
 	if echo {
-		to := msg.Source()
-		if msg.Group() != nil {
-			to = msg.Group().Hexid
+		to := msg.Source
+		if msg.Group != nil {
+			to = msg.Group.Hexid
 		}
-		err := sendMessage(msg.Group() != nil, to, msg.Message())
+		err := sendMessage(msg.Group != nil, to, msg.Message)
 
 		if err != nil {
 			log.Error(err)
@@ -251,7 +251,7 @@ func messageHandler(msg *textsecure.Message) {
 		return
 	}
 
-	if msg.Message() != "" {
+	if msg.Message != "" {
 		fmt.Printf("\r%s\n>", pretty(msg))
 		if hook != "" {
 			hookProcess := exec.Command(hook, pretty(msg))
@@ -263,26 +263,26 @@ func messageHandler(msg *textsecure.Message) {
 		}
 	}
 
-	for _, a := range msg.Attachments() {
-		handleAttachment(msg.Source(), a.R)
+	for _, a := range msg.Attachments {
+		handleAttachment(msg.Source, a.R)
 	}
 
 	// if no peer was specified on the command line, start a conversation with the first one contacting us
 	if to == "" {
-		to = msg.Source()
+		to = msg.Source
 		isGroup := false
-		if msg.Group() != nil {
+		if msg.Group != nil {
 			isGroup = true
-			to = msg.Group().Hexid
+			to = msg.Group.Hexid
 		}
 		if !redismode {
 			go conversationLoop(isGroup)
 		}
 	}
 	if redismode {
-		log.Infof("Publishing to redis, To: %s, Msg: %s", to, msg.Message())
-		rmsg := RedisMessage{to, msg.Message()}
-		sendMessageToRedis(rmsg)
+		log.Infof("Publishing to redis, To: %s, Msg: %s", to, msg.Message)
+
+		sendMessageToRedis(to, msg.Message, msg.Source, msg.SourceUUID, msg.Timestamp, msg.GroupV2, msg.Quote, msg.Reaction)
 	}
 }
 
@@ -303,19 +303,19 @@ func handleAttachment(src string, r io.Reader) {
 var timeFormat = "Mon 03:04"
 
 func timestamp(msg *textsecure.Message) string {
-	t := time.Unix(0, int64(msg.Timestamp())*1000000)
+	t := time.Unix(0, int64(msg.Timestamp)*1000000)
 	return t.Format(timeFormat)
 }
 
 func pretty(msg *textsecure.Message) string {
-	src := getName(msg.Source())
-	if msg.Group() != nil {
-		src = src + "[" + msg.Group().Name + "]"
+	src := getName(msg.Source)
+	if msg.Group != nil {
+		src = src + "[" + msg.Group.Name + "]"
 	}
 	if raw {
-		return fmt.Sprintf("%s %s %s", timestamp(msg), src, msg.Message())
+		return fmt.Sprintf("%s %s %s", timestamp(msg), src, msg.Message)
 	}
-	return fmt.Sprintf("%s %s %s", timestamp(msg), src, msg.Message())
+	return fmt.Sprintf("%s %s %s", timestamp(msg), src, msg.Message)
 }
 
 // getName returns the local contact name corresponding to a phone number,

@@ -103,19 +103,19 @@ func handleSyncSent(s *signalservice.SyncMessage_Sent, ts uint64) error {
 	}
 
 	msg := &Message{
-		source:      dest,
-		sourceUUID:  destUUID,
-		message:     dm.GetBody(),
-		attachments: atts,
-		groupV2:     grV2,
-		flags:       flags,
-		expireTimer: dm.GetExpireTimer(),
-		profileKey:  dm.GetProfileKey(),
-		timestamp:   *dm.Timestamp,
-		quote:       dm.GetQuote(),
-		contact:     cs,
-		sticker:     dm.GetSticker(),
-		reaction:    dm.GetReaction(),
+		Source:      dest,
+		SourceUUID:  destUUID,
+		Message:     dm.GetBody(),
+		Attachments: atts,
+		GroupV2:     grV2,
+		Flags:       flags,
+		ExpireTimer: dm.GetExpireTimer(),
+		ProfileKey:  dm.GetProfileKey(),
+		Timestamp:   *dm.Timestamp,
+		Quote:       dm.GetQuote(),
+		Contact:     cs,
+		Sticker:     dm.GetSticker(),
+		Reaction:    dm.GetReaction(),
 	}
 
 	if client.SyncSentHandler != nil {
