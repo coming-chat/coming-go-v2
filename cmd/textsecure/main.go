@@ -2,24 +2,24 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	textsecure "github.com/coming-chat/coming-go-v2"
 	"github.com/coming-chat/coming-go-v2/database"
-	"github.com/coming-chat/coming-go-v2/groupsv2"
-	signalservice "github.com/coming-chat/coming-go-v2/protobuf"
 	cache "github.com/coming-chat/coming-go-v2/redis"
-	"github.com/go-redis/redis/v8"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -38,37 +38,38 @@ import (
 // or send all messages received to redis
 
 var (
-	echo              bool
-	to                string
-	group             bool
-	message           string
-	attachment        string
-	newgroup          string
-	updategroup       string
-	leavegroup        string
-	endsession        bool
-	showdevices       bool
-	linkdevice        string
-	unlinkdevice      int
-	configDir         string
-	stress            int
-	hook              string
-	raw               bool
-	gateway           bool
-	bind              string
-	redismode         bool
-	redisbind         string
-	redispw           string
-	redisdb           int
-	redisMsgRecTopic  string
-	redisMsgRelyTopic string
-	useGroup          bool
-	signInOrUp        bool
-	postgresMode      bool
-	postgresBind      string
-	postgresUesr      string
-	postgresPw        string
-	postgresDB        string
+	echo               bool
+	to                 string
+	group              bool
+	message            string
+	attachment         string
+	newgroup           string
+	updategroup        string
+	leavegroup         string
+	endsession         bool
+	showdevices        bool
+	linkdevice         string
+	unlinkdevice       int
+	configDir          string
+	stress             int
+	hook               string
+	raw                bool
+	gateway            bool
+	bind               string
+	redismode          bool
+	redisbind          string
+	redispw            string
+	redisdb            int
+	redisMsgRecTopic   string
+	redisMsgReplyTopic string
+	redisMsgReplyGroup string
+	useGroup           bool
+	signInOrUp         bool
+	postgresMode       bool
+	postgresBind       string
+	postgresUesr       string
+	postgresPw         string
+	postgresDB         string
 )
 
 func init() {
@@ -95,7 +96,8 @@ func init() {
 	flag.StringVar(&redispw, "redispw", "", "redis password")
 	flag.IntVar(&redisdb, "redisdb", 0, "redis database")
 	flag.StringVar(&redisMsgRecTopic, "redismrect", "", "receive message push to redis topic")
-	flag.StringVar(&redisMsgRelyTopic, "redismrelt", "", "listen topic to push message")
+	flag.StringVar(&redisMsgReplyTopic, "redismrelt", "", "listen topic to push message")
+	flag.StringVar(&redisMsgReplyGroup, "redismrg", "coming-go", "listen topic group name")
 	flag.BoolVar(&useGroup, "usegroup", false, "use group ?")
 	flag.BoolVar(&signInOrUp, "signinorup", false, "sign in is true, sign up is false")
 	flag.BoolVar(&postgresMode, "postgresmode", false, "save message in postgresDB")
@@ -169,42 +171,20 @@ func getAvatarPath() string {
 	return readLine("get avatar local path> ")
 }
 
-func sendMessageToRedis(to, msg, source, uuid string, timestamp uint64, groupV2 *groupsv2.GroupV2, quote *signalservice.DataMessage_Quote, reaction *signalservice.DataMessage_Reaction) {
-	groupName := ""
-	if groupV2 != nil {
-		groupName = groupV2.DecryptedGroup.Title
+func sendMessage(isGroup bool, to, message string) error {
+	var err error
+	if isGroup {
+		_, err = textsecure.SendGroupMessage(to, message, 0) // 0 is the expire timer
+	} else {
+		_, err = textsecure.SendMessage(to, message, 0)
+		if nerr, ok := err.(axolotl.NotTrustedError); ok {
+			fmt.Printf("Peer identity not trusted. Remove the file .storage/identity/remote_%s to approve\n", nerr.ID)
+		}
 	}
-	quoteMsg := make(map[string]interface{})
-	if quote != nil {
-		quoteMsg["id"] = quote.GetId()
-		quoteMsg["cid"] = quote.GetAuthorE164()
-		quoteMsg["uuid"] = quote.GetAuthorUuid()
-		quoteMsg["text"] = quote.GetText()
-	}
-	quoteB, err := json.Marshal(quoteMsg)
-	if err != nil {
-		log.Errorf("push message to redis failed: %v", err)
-	}
-
-	err = cache.RedisClient.PushMessageToStream(&redis.XAddArgs{
-		Stream:     redisMsgRecTopic,
-		NoMkStream: false,
-		Values: map[string]interface{}{
-			"from":      to,
-			"message":   msg,
-			"cid":       source,
-			"uuid":      uuid,
-			"timestamp": timestamp,
-			"group":     groupName,
-			"quote":     string(quoteB),
-		},
-	})
-	if err != nil {
-		log.Errorf("push message to redis failed: %v", err)
-	}
+	return err
 }
 
-func sendMessage(isGroup bool, to, message string) error {
+func sendTypingMessage(isGroup bool, to string) error {
 	var err error
 	if isGroup {
 		_, err = textsecure.SendGroupMessage(to, message, 0) // 0 is the expire timer
@@ -307,7 +287,7 @@ func messageHandler(msg *textsecure.Message) {
 		}
 	}
 	if postgresMode {
-		err := database.DB.SavaMessage(msg)
+		err := database.DB.SavaReceiveMessage(msg)
 		if err != nil {
 			log.Errorf("save message %v on db err: %v", msg, err)
 		}
@@ -315,8 +295,10 @@ func messageHandler(msg *textsecure.Message) {
 	if redismode {
 		log.Infof("Publishing to redis, To: %s, Msg: %s", to, msg.Message)
 
-		sendMessageToRedis(to, msg.Message, msg.Source, msg.SourceUUID, msg.Timestamp, msg.GroupV2, msg.Quote, msg.Reaction)
+		cache.SendMessageToRedis(redisMsgRecTopic, msg.Message, msg.Source, msg.SourceUUID, msg.Timestamp, msg.GroupV2, msg.Quote)
 	}
+
+	sendMessage(false, to, message)
 }
 
 func handleAttachment(src string, r io.Reader) {
@@ -580,12 +562,9 @@ func main() {
 		SyncSentHandler:       syncSentHandler,
 		GetAvatarPath:         getAvatarPath,
 	}
-	if redismode {
-		err := cache.NewClient(redisbind, redispw, redisdb)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
+
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
 
 	if postgresMode {
 		err := database.NewDB(postgresBind, postgresUesr, postgresPw, postgresDB)
@@ -736,8 +715,48 @@ func main() {
 		}
 	}
 
-	err = textsecure.StartListening()
-	if err != nil {
-		log.Error(err)
+	if redismode {
+		err := cache.NewClient(redisbind, redispw, redisdb)
+		if err != nil {
+			log.Fatal(err)
+		}
+		cache.ListenTopic = redisMsgReplyTopic
+		cache.GroupId = redisMsgReplyGroup
+		err = cache.InitCustomer()
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer cache.Wg.Wait()
+
+		go cache.ListenMessage(ctx)
 	}
+
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				err = textsecure.StartListening(ctx)
+				if err != nil {
+					log.Error(err)
+				}
+			}
+
+		}
+	}(ctx)
+
+	interrupt := make(chan os.Signal, 1)
+
+	for {
+		signal.Notify(interrupt, os.Interrupt, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
+		select {
+		case <-interrupt:
+			log.Infoln("[closing] signal get, start close")
+			return
+		default:
+			continue
+		}
+	}
+
 }
