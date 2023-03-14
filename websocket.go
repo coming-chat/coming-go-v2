@@ -1,6 +1,7 @@
 package textsecure
 
 import (
+	"context"
 	"errors"
 	"net"
 	"net/url"
@@ -20,7 +21,7 @@ const (
 	writeWait = 25 * time.Second
 
 	// Time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
+	pongWait = 30 * time.Second
 
 	// Send pings to peer with this period. Must be less than pongWait.
 	pingPeriod = (pongWait * 9) / 10
@@ -103,19 +104,21 @@ func (c *Conn) write(mt int, payload []byte) error {
 }
 
 // writeWorker writes messages to websocket connection
-func (c *Conn) writeWorker() {
+func (c *Conn) writeWorker(close chan struct{}) {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		log.Debugf("[textsecure] Closing writeWorker")
 		ticker.Stop()
-		c.ws.Close()
 	}()
 	for {
 		select {
+		case <-close:
+			return
 		case message, ok := <-c.send:
 			if !ok {
 				log.Errorf("[textsecure] Failed to read message from channel")
 				c.write(websocket.CloseMessage, []byte{})
+				close <- struct{}{}
 				return
 			}
 
@@ -124,6 +127,7 @@ func (c *Conn) writeWorker() {
 				log.WithFields(log.Fields{
 					"error": err,
 				}).Error("[textsecure] Failed to send websocket message")
+				close <- struct{}{}
 				return
 			}
 		case <-ticker.C:
@@ -132,6 +136,7 @@ func (c *Conn) writeWorker() {
 				log.WithFields(log.Fields{
 					"error": err,
 				}).Error("[textsecure] Failed to send websocket ping message")
+				close <- struct{}{}
 				return
 			}
 		}
@@ -139,8 +144,11 @@ func (c *Conn) writeWorker() {
 }
 
 // StartListening connects to the server and handles incoming websocket messages.
-func StartListening() error {
-	var err error
+func StartListening(ctx context.Context) error {
+	var (
+		err        error
+		closeChain = make(chan struct{}, 1)
+	)
 
 	wsconn = &Conn{send: make(chan []byte, 256)}
 	err = wsconn.connect(config.ConfigFile.Server+websocketPath, config.ConfigFile.UUID, registration.Registration.Password)
@@ -152,7 +160,7 @@ func StartListening() error {
 	defer wsconn.ws.Close()
 
 	// Can only have a single goroutine call write methods
-	go wsconn.writeWorker()
+	go wsconn.writeWorker(closeChain)
 
 	wsconn.ws.SetReadDeadline(time.Now().Add(pongWait))
 	wsconn.ws.SetPongHandler(func(string) error {
@@ -162,66 +170,74 @@ func StartListening() error {
 	})
 
 	for {
-		_, bmsg, err := wsconn.ws.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Debugf("[textsecure] Websocket UnexpectedCloseError: %s", err)
+		select {
+		case <-ctx.Done():
+			closeChain <- struct{}{}
+			return nil
+		case <-closeChain:
+			return nil
+		default:
+			_, bmsg, err := wsconn.ws.ReadMessage()
+			if err != nil {
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					log.Debugf("[textsecure] Websocket UnexpectedCloseError: %s", err)
+				}
+				return err
 			}
-			return err
-		}
 
-		wsm := &signalservice.WebSocketMessage{}
-		err = proto.Unmarshal(bmsg, wsm)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-			}).Error("[textsecure] Failed to unmarshal websocket message")
-			return err
-		}
-
-		m := wsm.GetRequest().GetBody()
-
-		if len(m) > 0 {
-			plaintext, err := decryptReceivedMessage(m)
+			wsm := &signalservice.WebSocketMessage{}
+			err = proto.Unmarshal(bmsg, wsm)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"error": err,
-				}).Error("[textsecure] Failed to decrypt received message")
-			} else {
-				env, err := createEnvelope(plaintext)
-				if err != nil {
-					log.WithFields(log.Fields{
-						"error": err,
-					}).Error("[textsecure] Failed to create envelope")
-				}
-				err = handleReceivedMessage(env)
-				if err != nil {
-					log.Debugf("[textsecure] Failed to handle received message: %+v", env)
-					log.WithFields(log.Fields{
-						"error": err,
-					}).Error("[textsecure] Failed to handle received message")
-				}
+				}).Error("[textsecure] Failed to unmarshal websocket message")
+				return err
 			}
-		} else {
-			log.Debugln("[textsecure] Ask for new messages")
-			if wsm.GetRequest().GetPath() == "/api/v1/queue/empty" {
-				log.Println("[textsecure] No new messages")
+
+			m := wsm.GetRequest().GetBody()
+
+			if len(m) > 0 {
+				plaintext, err := decryptReceivedMessage(m)
+				if err != nil {
+					log.WithFields(log.Fields{
+						"error": err,
+					}).Error("[textsecure] Failed to decrypt received message")
+				} else {
+					env, err := createEnvelope(plaintext)
+					if err != nil {
+						log.WithFields(log.Fields{
+							"error": err,
+						}).Error("[textsecure] Failed to create envelope")
+					}
+					err = handleReceivedMessage(env)
+					if err != nil {
+						log.Debugf("[textsecure] Failed to handle received message: %+v", env)
+						log.WithFields(log.Fields{
+							"error": err,
+						}).Error("[textsecure] Failed to handle received message")
+					}
+				}
 			} else {
+				log.Debugln("[textsecure] Ask for new messages")
+				if wsm.GetRequest().GetPath() == "/api/v1/queue/empty" {
+					log.Println("[textsecure] No new messages")
+				} else {
+					log.WithFields(log.Fields{
+						"source": wsm.GetRequest().GetId(),
+					}).Warn("[textsecure] Zero byte message received. Ignoring")
+				}
+
+			}
+
+			err = wsconn.sendAck(wsm.GetRequest().GetId())
+			if err != nil {
 				log.WithFields(log.Fields{
-					"source": wsm.GetRequest().GetId(),
-				}).Warn("[textsecure] Zero byte message received. Ignoring")
+					"error": err,
+				}).Error("[textsecure] Failed to send ack")
+				return err
 			}
 
 		}
-
-		err = wsconn.sendAck(wsm.GetRequest().GetId())
-		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err,
-			}).Error("[textsecure] Failed to send ack")
-			return err
-		}
-
 	}
 
 }
