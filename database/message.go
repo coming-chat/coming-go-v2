@@ -14,13 +14,13 @@ type Message struct {
 	Uuid       string         `gorm:"type:varchar(60);primaryKey" json:"uuid"`
 	Timestamp  time.Time      `gorm:"type:timestamp;" json:"timestamp"`
 	Direction  string         `gorm:"type:varchar(20)" json:"from"`
-	GroupHexId string         `gorm:"type:varchar(100)" json:"group"`
+	GroupHexId string         `gorm:"type:varchar(100);primaryKey" json:"group"`
 	GroupName  string         `gorm:"type:varchar(255)" json:"groupName"`
 	Delete     bool           `gorm:"type:bool;default:false" json:"delete"`
 	Quote      datatypes.JSON `gorm:"type:jsonb" json:"quote"`
 }
 
-func (d *DBStore) SavaMessage(msg *textsecure.Message) error {
+func (d *DBStore) SavaReceiveMessage(msg *textsecure.Message) error {
 	var (
 		groupId, groupName string
 		err                error

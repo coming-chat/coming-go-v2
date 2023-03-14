@@ -5,6 +5,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const tablePrefix = "coming_"
+
 type DBStore struct {
 	*gorm.DB
 }
@@ -29,7 +31,7 @@ func NewDB(url, username, password, dbName string) error {
 }
 
 func (d *DBStore) Migrate() error {
-	err := d.AutoMigrate(&Message{})
+	err := d.AutoMigrate(&Message{}, &QueueMessage{})
 	if err != nil {
 		return err
 	}
