@@ -176,19 +176,6 @@ func sendMessage(isGroup bool, to, message string) error {
 	return err
 }
 
-func sendTypingMessage(isGroup bool, to string) error {
-	var err error
-	if isGroup {
-		_, err = textsecure.SendGroupMessage(to, message, 0) // 0 is the expire timer
-	} else {
-		_, err = textsecure.SendMessage(to, message, 0)
-		if nerr, ok := err.(axolotl.NotTrustedError); ok {
-			fmt.Printf("Peer identity not trusted. Remove the file .storage/identity/remote_%s to approve\n", nerr.ID)
-		}
-	}
-	return err
-}
-
 func sendAttachment(isGroup bool, to, message string, f io.Reader) error {
 	var err error
 	if isGroup {
@@ -301,11 +288,6 @@ func messageHandler(msg *textsecure.Message) {
 	})
 	if err != nil {
 		log.Errorf("send READ message failed: %v", err)
-	}
-
-	_, err = textsecure.SendTypingStartMessage(msg.Source, msg.Timestamp)
-	if err != nil {
-		log.Errorf("send typing start message failed: %v", err)
 	}
 }
 

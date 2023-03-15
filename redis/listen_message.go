@@ -218,10 +218,6 @@ func TrimQueueList(ctx context.Context) {
 }
 
 func sendMessage(isGroup bool, to, message string) (err error) {
-	_, err = textsecure.SendTypingEndMessage(to, 0)
-	if err != nil {
-		log.Errorf("send typing stop message failed: %v", err)
-	}
 	if isGroup {
 		_, err = textsecure.SendGroupMessage(to, message, 0) // 0 is the expire timer
 	} else {
