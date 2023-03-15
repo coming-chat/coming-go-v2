@@ -70,6 +70,7 @@ var (
 	postgresUesr       string
 	postgresPw         string
 	postgresDB         string
+	limitedCid         int
 )
 
 func init() {
@@ -105,6 +106,7 @@ func init() {
 	flag.StringVar(&postgresUesr, "postgresuser", "postgres", "postgres username")
 	flag.StringVar(&postgresPw, "postgrespw", "", "postgres password")
 	flag.StringVar(&postgresDB, "postgresdb", "coming_message", "postgres db name")
+	flag.IntVar(&limitedCid, "limitedcid", 13, "limited length of cid can be call")
 }
 
 var (
@@ -222,6 +224,13 @@ func syncReadHandler(text string, id uint64) {
 }
 
 func messageHandler(msg *textsecure.Message) {
+	if len(msg.Source) > limitedCid {
+		err := sendMessage(msg.Group != nil, msg.Source, "Sorry, you are temporarily unable to use this feature. If you use a 3, 4, or 5-digit CID to log in to ComingChat, I can chat with you and help answer your questions.")
+		if err != nil {
+			log.Error(err)
+		}
+		return
+	}
 	if echo {
 		to := msg.Source
 		if msg.Group != nil {
@@ -245,6 +254,12 @@ func messageHandler(msg *textsecure.Message) {
 		if !raw {
 			fmt.Printf("\r%s\n>", pretty(msg))
 		}
+	} else if len(msg.Attachments) != 0 {
+		err := sendMessage(msg.Group != nil, msg.Source, "Non-text is not supported, please re-describe your question.")
+		if err != nil {
+			log.Error(err)
+		}
+		return
 	} else {
 		return
 	}
