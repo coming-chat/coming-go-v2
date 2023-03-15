@@ -23,7 +23,6 @@ type Config struct {
 	Avatar                    string              `yaml:"avatar"`
 	UnidentifiedAccessKey     []byte              `yaml:"unidentifiedAccessKey"` // The access key for unidentified users
 	Certificate               []byte              `yaml:"certificate"`           // The access key for unidentified users
-	CrayfishSupport           bool                `yaml:"crayfishSupport"`
 	Group                     struct {
 		MaxGroupSize                   int
 		MaxGroupTitleLengthBytes       int
