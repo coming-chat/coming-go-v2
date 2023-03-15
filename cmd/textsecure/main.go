@@ -114,11 +114,6 @@ var (
 	blue   = "\x1b[34m"
 )
 
-type RedisMessage struct {
-	To   string
-	Body string
-}
-
 func readLine(prompt string) string {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print(prompt)
@@ -159,9 +154,6 @@ func getStoragePassword() string {
 
 func getConfig() (*config.Config, error) {
 	return textsecure.ReadConfig(configDir + "/config.yml")
-}
-func getUsername() string {
-	return readLine("A username is missing please enter one>")
 }
 func getLocalContacts() ([]contacts.Contact, error) {
 	return contacts.ReadContacts(configDir + "/contacts.yml")
@@ -287,7 +279,7 @@ func messageHandler(msg *textsecure.Message) {
 		}
 	}
 	if postgresMode {
-		err := database.DB.SavaReceiveMessage(msg)
+		err := database.DB.SavaReceiveMessage(msg.Source, msg.SourceUUID, msg.Message, int64(msg.Timestamp), msg.GroupV2, msg.Quote)
 		if err != nil {
 			log.Errorf("save message %v on db err: %v", msg, err)
 		}
@@ -553,7 +545,6 @@ func main() {
 		MessageHandler:        messageHandler,
 		ReceiptMessageHandler: receiptMessageHandler,
 		RegistrationDone:      registrationDone,
-		GetUsername:           getUsername,
 		GetPhoneNumber:        getPhoneNumber,
 		GetPin:                getPin,
 		TypingMessageHandler:  typingMessageHandler,

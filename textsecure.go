@@ -217,7 +217,6 @@ type Client struct {
 	SyncReadHandler       func(string, uint64)
 	SyncSentHandler       func(*Message, uint64)
 	RegistrationDone      func()
-	GetUsername           func() string
 	GetAvatarPath         func() string
 }
 
@@ -258,6 +257,9 @@ func Setup(c *Client, signInOrUp bool) error {
 	client = c
 
 	config.ConfigFile, err = loadConfig()
+	if err != nil {
+		return err
+	}
 
 	setupLogging()
 	err = setupStore()
@@ -331,7 +333,7 @@ func Setup(c *Client, signInOrUp bool) error {
 	}
 	// check if a username is set
 	if config.ConfigFile.Name == "" {
-		config.ConfigFile.Name = client.GetUsername()
+		panic("name is missing")
 		profileChanged = true
 		saveConfig(config.ConfigFile)
 	}
@@ -495,6 +497,7 @@ func registerDevice(signInOrUp bool) error {
 			for _, v := range cids {
 				if config.ConfigFile.Tel == v {
 					loginCid = v
+					break
 				}
 			}
 		}
@@ -506,8 +509,9 @@ func registerDevice(signInOrUp bool) error {
 			return err
 		}
 	}
-	name := client.GetUsername()
-	config.ConfigFile.Name = name
+	if config.ConfigFile.Name == "" {
+		panic("name is missings")
+	}
 	config.ConfigFile.Tel = cid
 	config.ConfigFile.UUID = uuid
 	config.ConfigFile.AccountCapabilities = accountAttributes.Capabilities
