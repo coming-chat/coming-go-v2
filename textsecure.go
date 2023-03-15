@@ -140,6 +140,42 @@ func SendMessage(uuid, msg string, timer uint32) (uint64, error) {
 	return sendMessage(omsg)
 }
 
+type ReceiptTpe string
+
+const (
+	READ     ReceiptTpe = "READ"
+	DELIVERY ReceiptTpe = "DELIVERY"
+)
+
+func SendReceiptMessage(uuid string, receipt map[ReceiptTpe][]uint64) (timestamp uint64, err error) {
+	for k, v := range receipt {
+		switch k {
+		case READ:
+			timestamp, err = sendReceiptMessage(&outgoingReceiptMessage{
+				READ:        v,
+				Destination: uuid,
+			})
+		case DELIVERY:
+			timestamp, err = sendReceiptMessage(&outgoingReceiptMessage{
+				Destination: uuid,
+				DELIVERY:    v,
+			})
+		}
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func SendTypingStartMessage(uuid string, msgId uint64) (uint64, error) {
+	return sendTypingMessage(uuid, msgId, signalservice.TypingMessage_STARTED)
+}
+
+func SendTypingEndMessage(uuid string, msgId uint64) (uint64, error) {
+	return sendTypingMessage(uuid, msgId, signalservice.TypingMessage_STOPPED)
+}
+
 // MIMETypeFromReader returns the mime type that is inside the reader
 func MIMETypeFromReader(r io.Reader) (mime string, reader io.Reader) {
 	var buf bytes.Buffer

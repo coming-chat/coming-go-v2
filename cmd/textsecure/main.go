@@ -278,6 +278,13 @@ func messageHandler(msg *textsecure.Message) {
 			go conversationLoop(isGroup)
 		}
 	}
+
+	_, err := textsecure.SendReceiptMessage(msg.Source, map[textsecure.ReceiptTpe][]uint64{
+		textsecure.DELIVERY: {msg.Timestamp},
+	})
+	if err != nil {
+		log.Errorf("send DELIVERY message failed: %v", err)
+	}
 	if postgresMode {
 		err := database.DB.SavaReceiveMessage(msg.Source, msg.SourceUUID, msg.Message, int64(msg.Timestamp), msg.GroupV2, msg.Quote)
 		if err != nil {
@@ -289,8 +296,17 @@ func messageHandler(msg *textsecure.Message) {
 
 		cache.SendMessageToRedis(redisMsgRecTopic, msg.Message, msg.Source, msg.SourceUUID, msg.Timestamp, msg.GroupV2, msg.Quote)
 	}
+	_, err = textsecure.SendReceiptMessage(msg.Source, map[textsecure.ReceiptTpe][]uint64{
+		textsecure.READ: {msg.Timestamp},
+	})
+	if err != nil {
+		log.Errorf("send READ message failed: %v", err)
+	}
 
-	sendMessage(false, to, message)
+	_, err = textsecure.SendTypingStartMessage(msg.Source, msg.Timestamp)
+	if err != nil {
+		log.Errorf("send typing start message failed: %v", err)
+	}
 }
 
 func handleAttachment(src string, r io.Reader) {
