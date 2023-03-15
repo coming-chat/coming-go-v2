@@ -2,7 +2,8 @@ package database
 
 import (
 	"encoding/json"
-	textsecure "github.com/coming-chat/coming-go-v2"
+	"github.com/coming-chat/coming-go-v2/groupsv2"
+	protobuf "github.com/coming-chat/coming-go-v2/protobuf"
 	"gorm.io/datatypes"
 	"time"
 )
@@ -20,32 +21,54 @@ type Message struct {
 	Quote      datatypes.JSON `gorm:"type:jsonb" json:"quote"`
 }
 
-func (d *DBStore) SavaReceiveMessage(msg *textsecure.Message) error {
+func (d *DBStore) SavaReceiveMessage(source, sourceUUID, message string, timestamp int64, groupV2 *groupsv2.GroupV2, quoteData *protobuf.DataMessage_Quote) error {
 	var (
 		groupId, groupName string
 		err                error
 		quote              []byte
 	)
 
-	if msg.GroupV2 != nil {
-		groupId = msg.GroupV2.Hexid
-		groupName = msg.GroupV2.DecryptedGroup.Title
+	if groupV2 != nil {
+		groupId = groupV2.Hexid
+		groupName = groupV2.DecryptedGroup.Title
 	}
-	if msg.Quote != nil {
-		quote, err = json.Marshal(msg.Quote)
+	if quoteData != nil {
+		quote, err = json.Marshal(quoteData)
 		if err != nil {
 			return err
 		}
 	}
 	return d.Model(&Message{}).Create(&Message{
-		MsgId:      int64(msg.Timestamp),
-		Message:    msg.Message,
-		Cid:        msg.Source,
-		Uuid:       msg.SourceUUID,
-		Timestamp:  time.UnixMilli(int64(msg.Timestamp)),
+		MsgId:      timestamp,
+		Message:    message,
+		Cid:        source,
+		Uuid:       sourceUUID,
+		Timestamp:  time.UnixMilli(timestamp),
 		Direction:  "From",
 		GroupHexId: groupId,
 		GroupName:  groupName,
 		Quote:      quote,
+	}).Error
+}
+
+func (d *DBStore) SaveSendDataMessage(msg *protobuf.DataMessage, to string, isGroup bool) error {
+	var (
+		groupHexId = ""
+		cid        = ""
+	)
+	if isGroup {
+		groupHexId = to
+	} else {
+		cid = to
+	}
+	return d.Model(&Message{}).Create(&Message{
+		MsgId:      int64(msg.GetTimestamp()),
+		Message:    msg.GetBody(),
+		Cid:        cid,
+		Uuid:       "",
+		Timestamp:  time.UnixMilli(int64(msg.GetTimestamp())),
+		Direction:  "To",
+		GroupHexId: groupHexId,
+		GroupName:  "",
 	}).Error
 }

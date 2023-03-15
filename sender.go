@@ -1,6 +1,7 @@
 package textsecure
 
 import (
+	"github.com/coming-chat/coming-go-v2/database"
 	"time"
 
 	"github.com/coming-chat/coming-go-v2/config"
@@ -21,6 +22,16 @@ func sendMessage(msg *outgoingMessage) (uint64, error) {
 
 	content := &signalservice.Content{
 		DataMessage: dm,
+	}
+	if database.PostgresMode && msg.msg != "" {
+		isGroup := false
+		if msg.groupV2 != nil {
+			isGroup = true
+		}
+		err := database.DB.SaveSendDataMessage(dm, msg.destination, isGroup)
+		if err != nil {
+			log.Errorf("save send message error: %v", err)
+		}
 	}
 	b, err := proto.Marshal(content)
 	if err != nil {

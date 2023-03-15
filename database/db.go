@@ -5,6 +5,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var PostgresMode bool
+
 const tablePrefix = "coming_"
 
 type DBStore struct {
@@ -27,6 +29,7 @@ func NewDB(url, username, password, dbName string) error {
 	if err != nil {
 		return err
 	}
+	PostgresMode = true
 	return nil
 }
 
