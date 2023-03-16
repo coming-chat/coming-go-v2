@@ -168,12 +168,12 @@ func SendReceiptMessage(uuid string, receipt map[ReceiptTpe][]uint64) (timestamp
 	return
 }
 
-func SendTypingStartMessage(uuid string, msgId uint64) (uint64, error) {
-	return sendTypingMessage(uuid, msgId, signalservice.TypingMessage_STARTED)
+func SendTypingStartMessage(uuid string) (uint64, error) {
+	return sendTypingMessage(uuid, signalservice.TypingMessage_STARTED)
 }
 
-func SendTypingEndMessage(uuid string, msgId uint64) (uint64, error) {
-	return sendTypingMessage(uuid, msgId, signalservice.TypingMessage_STOPPED)
+func SendTypingEndMessage(uuid string) (uint64, error) {
+	return sendTypingMessage(uuid, signalservice.TypingMessage_STOPPED)
 }
 
 // MIMETypeFromReader returns the mime type that is inside the reader

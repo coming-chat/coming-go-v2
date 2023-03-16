@@ -45,7 +45,7 @@ func handleTypingMessage(src string, srcUUID string, timestamp uint64, cm *signa
 	msg := &Message{
 		Source:     src,
 		SourceUUID: srcUUID,
-		Message:    "typingMessage",
+		Message:    signalservice.TypingMessage_Action_name[int32(*cm.Action)],
 		Timestamp:  timestamp,
 	}
 

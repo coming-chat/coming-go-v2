@@ -187,22 +187,21 @@ func sendReceiptMessage(msg *outgoingReceiptMessage) (uint64, error) {
 	return resp.Timestamp, err
 }
 
-func sendTypingMessage(destination string, msgId uint64, action signalservice.TypingMessage_Action) (uint64, error) {
+func sendTypingMessage(destination string, action signalservice.TypingMessage_Action) (uint64, error) {
 	if _, ok := deviceLists[destination]; !ok {
 		deviceLists[destination] = []uint32{1}
 	}
+	now := uint64(time.Now().UnixNano() / 1000000)
 	content := &signalservice.Content{
 		TypingMessage: &signalservice.TypingMessage{
 			Action:    &action,
-			Timestamp: &msgId,
+			Timestamp: &now,
 		},
 	}
 	b, err := proto.Marshal(content)
 	if err != nil {
 		return 0, err
 	}
-
-	now := uint64(time.Now().UnixNano() / 1000000)
 
 	resp, err := buildAndSendMessage(destination, padMessage(b), false, &now)
 	if err != nil {
