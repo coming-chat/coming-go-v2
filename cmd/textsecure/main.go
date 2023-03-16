@@ -215,6 +215,7 @@ func conversationLoop(isGroup bool) {
 func receiptMessageHandler(msg *textsecure.Message) {
 }
 func typingMessageHandler(msg *textsecure.Message) {
+	log.Infoln("user " + msg.Source + " is " + msg.Message)
 }
 func callMessageHandler(msg *textsecure.Message) {
 }
@@ -303,6 +304,10 @@ func messageHandler(msg *textsecure.Message) {
 	})
 	if err != nil {
 		log.Errorf("send READ message failed: %v", err)
+	}
+	_, err = textsecure.SendTypingStartMessage(msg.Source)
+	if err != nil {
+		log.Errorf("send typing start message failed: %v", err)
 	}
 }
 
