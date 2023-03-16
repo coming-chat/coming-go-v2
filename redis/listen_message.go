@@ -218,6 +218,7 @@ func TrimQueueList(ctx context.Context) {
 }
 
 func sendMessage(isGroup bool, to, message string) (err error) {
+
 	if isGroup {
 		_, err = textsecure.SendGroupMessage(to, message, 0) // 0 is the expire timer
 	} else {
@@ -248,9 +249,9 @@ func consumeMessage(message redis.XMessage) (err error) {
 }
 
 func consumeErrMsg(message redis.XMessage, err error) error {
-	msg, err := json.Marshal(message.Values)
-	if err != nil {
-		return err
+	msg, err1 := json.Marshal(message.Values)
+	if err1 != nil {
+		return err1
 	}
 	if !database.DB.CreateQueueMessages([]database.QueueMessage{
 		{
