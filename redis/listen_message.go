@@ -17,15 +17,16 @@ import (
 )
 
 var (
-	ListenTopic string
-	GroupId     string
-	Wg          *sync.WaitGroup
-	msgSendPool chan struct{}
+	ListenTopic     string
+	GroupId         string
+	Wg              *sync.WaitGroup
+	msgSendPool     chan struct{}
+	SendMsgPoolSize int64
+	HandleMsgSize   int64
 )
 
 const (
 	customer = "coming-go-client-1"
-	msgCount = 1
 )
 
 func ListenMessage(ctx context.Context) {
@@ -36,7 +37,7 @@ func ListenMessage(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
-			message, err := RedisClient.ReadGroupMessages(ListenTopic, GroupId, customer, msgCount)
+			message, err := RedisClient.ReadGroupMessages(ListenTopic, GroupId, customer, HandleMsgSize)
 			if err != nil {
 				log.Errorf("redis fetch message err: %v", err)
 				continue
@@ -56,7 +57,7 @@ func InitCustomer() error {
 		NeedCreateConsume = true
 	)
 	Wg = &sync.WaitGroup{}
-	msgSendPool = make(chan struct{}, 5)
+	msgSendPool = make(chan struct{}, SendMsgPoolSize)
 	groups, err := RedisClient.GetTopicGroups(ListenTopic)
 	if err != nil && strings.Index(err.Error(), "ERR no such key") == -1 {
 		return err
@@ -104,7 +105,7 @@ func getPendingMessageAndConsume(start string) ([]redis.XPendingExt, error) {
 		Group:    GroupId,
 		Start:    start,
 		End:      "+",
-		Count:    msgCount,
+		Count:    HandleMsgSize,
 		Consumer: customer,
 	})
 	if err != nil {
@@ -149,8 +150,8 @@ func consumePendingMessage() {
 	if err != nil {
 		log.Errorf("consume pending message failed: %v", err)
 	}
-	for len(pendingMsgExt) == msgCount {
-		pendingMsgExt, err = getPendingMessageAndConsume(pendingMsgExt[msgCount-1].ID)
+	for int64(len(pendingMsgExt)) == HandleMsgSize {
+		pendingMsgExt, err = getPendingMessageAndConsume(pendingMsgExt[HandleMsgSize-1].ID)
 		if err != nil {
 			if err == redis.Nil {
 				return

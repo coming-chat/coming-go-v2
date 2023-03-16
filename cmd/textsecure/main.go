@@ -38,39 +38,41 @@ import (
 // or send all messages received to redis
 
 var (
-	echo               bool
-	to                 string
-	group              bool
-	message            string
-	attachment         string
-	newgroup           string
-	updategroup        string
-	leavegroup         string
-	endsession         bool
-	showdevices        bool
-	linkdevice         string
-	unlinkdevice       int
-	configDir          string
-	stress             int
-	hook               string
-	raw                bool
-	gateway            bool
-	bind               string
-	redismode          bool
-	redisbind          string
-	redispw            string
-	redisdb            int
-	redisMsgRecTopic   string
-	redisMsgReplyTopic string
-	redisMsgReplyGroup string
-	useGroup           bool
-	signInOrUp         bool
-	postgresMode       bool
-	postgresBind       string
-	postgresUesr       string
-	postgresPw         string
-	postgresDB         string
-	limitedCid         int
+	echo                bool
+	to                  string
+	group               bool
+	message             string
+	attachment          string
+	newgroup            string
+	updategroup         string
+	leavegroup          string
+	endsession          bool
+	showdevices         bool
+	linkdevice          string
+	unlinkdevice        int
+	configDir           string
+	stress              int
+	hook                string
+	raw                 bool
+	gateway             bool
+	bind                string
+	redismode           bool
+	redisbind           string
+	redispw             string
+	redisdb             int
+	redisMsgRecTopic    string
+	redisMsgReplyTopic  string
+	redisMsgReplyGroup  string
+	useGroup            bool
+	signInOrUp          bool
+	postgresMode        bool
+	postgresBind        string
+	postgresUesr        string
+	postgresPw          string
+	postgresDB          string
+	limitedCid          int
+	sendMessagePoolSize int64
+	handleMsgSize       int64
 )
 
 func init() {
@@ -107,6 +109,8 @@ func init() {
 	flag.StringVar(&postgresPw, "postgrespw", "", "postgres password")
 	flag.StringVar(&postgresDB, "postgresdb", "coming_message", "postgres db name")
 	flag.IntVar(&limitedCid, "limitedcid", 13, "limited length of cid can be call")
+	flag.Int64Var(&sendMessagePoolSize, "sendmsgpoolsize", 1, "send message pool size")
+	flag.Int64Var(&handleMsgSize, "handlemsize", 1, "handle message betch size")
 }
 
 var (
@@ -729,6 +733,8 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		cache.SendMsgPoolSize = int64(sendMessagePoolSize)
+		cache.HandleMsgSize = handleMsgSize
 		cache.ListenTopic = redisMsgReplyTopic
 		cache.GroupId = redisMsgReplyGroup
 		err = cache.InitCustomer()
