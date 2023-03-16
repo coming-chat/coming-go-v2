@@ -251,10 +251,10 @@ func consumeMessage(message redis.XMessage) (err error) {
 	return sendMessage(isGroup, to, msg)
 }
 
-func consumeErrMsg(message redis.XMessage, err error) error {
-	msg, err1 := json.Marshal(message.Values)
-	if err1 != nil {
-		return err1
+func consumeErrMsg(message redis.XMessage, fromErr error) error {
+	msg, err := json.Marshal(message.Values)
+	if err != nil {
+		return err
 	}
 	if !database.DB.CreateQueueMessages([]database.QueueMessage{
 		{
@@ -262,7 +262,7 @@ func consumeErrMsg(message redis.XMessage, err error) error {
 			Key:           message.ID,
 			Topic:         ListenTopic,
 			ManualProcess: true,
-			ErrReason:     err.Error(),
+			ErrReason:     fromErr.Error(),
 			Status:        "failed",
 			GroupId:       GroupId,
 		},
