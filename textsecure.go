@@ -763,7 +763,7 @@ func handleReceivedMessage(env *signalservice.Envelope) error {
 	case signalservice.Envelope_UNIDENTIFIED_SENDER:
 
 		if registration.Registration.SignalingKey[0] != 1 {
-			log.Errorln("failed to handle message, signalingkey has wrong version, please re-register to update your signaling-key")
+			log.Errorln("[textsecure] failed to handle message, signalingkey has wrong version, please re-register to update your signaling-key")
 		}
 
 		trustRootByte, err := base64.StdEncoding.DecodeString(config.TrustRoot)
@@ -773,7 +773,18 @@ func handleReceivedMessage(env *signalservice.Envelope) error {
 		sealSC := axolotl.NewSealedSessionCipher(sc, axolotl.NewECPublicKey(trustRootByte[1:33]))
 		decryptedMsg, err := sealSC.Decrypt(env.GetContent(), env.GetTimestamp())
 		if err != nil {
-			return err
+			if err.Error() != "invalid message: no valid sessions" {
+				return err
+			}
+			log.Warnf("[textsecure] decryptedMessage get no sessions, Now reset the session with %s \n", sc.RecipientID)
+			_, err = sendMessage(&outgoingMessage{
+				destination: sc.RecipientID,
+				flags:       uint32(signalservice.DataMessage_Flags_value["END_SESSION"]),
+			})
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 		content := stripPadding(decryptedMsg.PaddedMessage)
 
