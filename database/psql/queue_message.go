@@ -1,4 +1,4 @@
-package database
+package psql
 
 import (
 	log "github.com/sirupsen/logrus"

@@ -1,4 +1,4 @@
-package database
+package psql
 
 import (
 	"encoding/json"

@@ -1,11 +1,13 @@
-package database
+package psql
 
 import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-var PostgresMode bool
+var (
+	DB *DBStore
+)
 
 const tablePrefix = "coming_"
 
@@ -13,11 +15,8 @@ type DBStore struct {
 	*gorm.DB
 }
 
-var DB *DBStore
-
-func NewDB(url, username, password, dbName string) error {
-	db, err := gorm.Open(postgres.Open("host=" + url + " port=5432" + " user=" + username + " password='" + password +
-		"' dbname=" + dbName + " sslmode=disable"))
+func NewDB(dsn string) error {
+	db, err := gorm.Open(postgres.Open(dsn))
 	if err != nil {
 		return err
 	}
@@ -29,7 +28,6 @@ func NewDB(url, username, password, dbName string) error {
 	if err != nil {
 		return err
 	}
-	PostgresMode = true
 	return nil
 }
 
