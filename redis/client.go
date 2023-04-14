@@ -18,6 +18,7 @@ func NewClient(address, password string, db int) error {
 			Addr:     address,
 			Password: password,
 			DB:       db,
+			PoolSize: 20,
 		}),
 	}
 

@@ -7,7 +7,8 @@ import (
 	"flag"
 	"fmt"
 	textsecure "github.com/coming-chat/coming-go-v2"
-	"github.com/coming-chat/coming-go-v2/database"
+	"github.com/coming-chat/coming-go-v2/database/mongo"
+	"github.com/coming-chat/coming-go-v2/database/psql"
 	cache "github.com/coming-chat/coming-go-v2/redis"
 	"io"
 	"io/ioutil"
@@ -66,10 +67,9 @@ var (
 	useGroup            bool
 	signInOrUp          bool
 	postgresMode        bool
-	postgresBind        string
-	postgresUesr        string
-	postgresPw          string
-	postgresDB          string
+	postgresUrl         string
+	mongoMode           bool
+	mongoUrl            string
 	limitedCid          int
 	sendMessagePoolSize int64
 	handleMsgSize       int64
@@ -103,11 +103,10 @@ func init() {
 	flag.StringVar(&redisMsgReplyGroup, "redismrg", "coming-go", "listen topic group name")
 	flag.BoolVar(&useGroup, "usegroup", false, "use group ?")
 	flag.BoolVar(&signInOrUp, "signinorup", false, "sign in is true, sign up is false")
-	flag.BoolVar(&postgresMode, "postgresmode", false, "save message in postgresDB")
-	flag.StringVar(&postgresBind, "postgresbind", "", "postgres url")
-	flag.StringVar(&postgresUesr, "postgresuser", "postgres", "postgres username")
-	flag.StringVar(&postgresPw, "postgrespw", "", "postgres password")
-	flag.StringVar(&postgresDB, "postgresdb", "coming_message", "postgres db name")
+	flag.BoolVar(&postgresMode, "psqlmode", false, "save message in postgresDB")
+	flag.StringVar(&postgresUrl, "psqlurl", "", "postgres url")
+	flag.BoolVar(&mongoMode, "mongomode", false, "save message in mongo")
+	flag.StringVar(&mongoUrl, "mongourl", "", "mongo url")
 	flag.IntVar(&limitedCid, "limitedcid", 13, "limited length of cid can be call")
 	flag.Int64Var(&sendMessagePoolSize, "sendmsgpoolsize", 1, "send message pool size")
 	flag.Int64Var(&handleMsgSize, "handlemsize", 1, "handle message betch size")
@@ -292,8 +291,14 @@ func messageHandler(msg *textsecure.Message) {
 	if err != nil {
 		log.Errorf("send DELIVERY message failed: %v", err)
 	}
-	if postgresMode {
-		err := database.DB.SavaReceiveMessage(msg.Source, msg.SourceUUID, msg.Message, int64(msg.Timestamp), msg.GroupV2, msg.Quote)
+	if postgresMode && !mongoMode {
+		err = psql.DB.SavaReceiveMessage(msg.Source, msg.SourceUUID, msg.Message, int64(msg.Timestamp), msg.GroupV2, msg.Quote)
+		if err != nil {
+			log.Errorf("save message %v on db err: %v", msg, err)
+		}
+	}
+	if mongoMode {
+		err = mongo.DB.SavaReceiveMessage(msg.Source, msg.SourceUUID, msg.Message, int64(msg.Timestamp), msg.GroupV2, msg.Quote)
 		if err != nil {
 			log.Errorf("save message %v on db err: %v", msg, err)
 		}
@@ -580,7 +585,14 @@ func main() {
 	defer cancelFunc()
 
 	if postgresMode {
-		err := database.NewDB(postgresBind, postgresUesr, postgresPw, postgresDB)
+		err := psql.NewDB(postgresUrl)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if mongoMode {
+		err := mongo.New(mongoUrl, ctx)
 		if err != nil {
 			log.Fatal(err)
 		}

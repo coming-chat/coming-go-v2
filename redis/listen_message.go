@@ -7,7 +7,7 @@ import (
 	"fmt"
 	textsecure "github.com/coming-chat/coming-go-v2"
 	"github.com/coming-chat/coming-go-v2/axolotl"
-	"github.com/coming-chat/coming-go-v2/database"
+	"github.com/coming-chat/coming-go-v2/database/psql"
 	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
 	"strconv"
@@ -257,7 +257,7 @@ func consumeErrMsg(message redis.XMessage, fromErr error) error {
 	if err != nil {
 		return err
 	}
-	if !database.DB.CreateQueueMessages([]database.QueueMessage{
+	if !psql.DB.CreateQueueMessages([]psql.QueueMessage{
 		{
 			Message:       msg,
 			Key:           message.ID,
