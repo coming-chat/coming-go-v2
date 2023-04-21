@@ -162,9 +162,12 @@ func (ss *sessionState) setSenderChain(kp *ECKeyPair, ck *chainKey) {
 	}
 }
 
-func (ss *sessionState) getSenderChainKey() *chainKey {
+func (ss *sessionState) getSenderChainKey() (*chainKey, error) {
+	if ss.SS.GetSenderChain() == nil || ss.SS.GetSenderChain().GetChainKey() == nil {
+		return nil, fmt.Errorf("protobuf.SessionStructure has nil content: %v", ss.SS)
+	}
 	ssck := ss.SS.GetSenderChain().GetChainKey()
-	return newChainKey(ssck.Key, ssck.Index)
+	return newChainKey(ssck.Key, ssck.Index), nil
 }
 
 func (ss *sessionState) setSenderChainKey(ck *chainKey) {
@@ -530,7 +533,10 @@ func (sc *SessionCipher) SessionEncryptMessage(plaintext []byte) ([]byte, int32,
 		return nil, 0, err
 	}
 	ss := sr.sessionState
-	chainKey := ss.getSenderChainKey()
+	chainKey, err := ss.getSenderChainKey()
+	if err != nil {
+		return nil, 0, err
+	}
 	messageKeys, err := chainKey.getMessageKeys()
 	if err != nil {
 		return nil, 0, err
@@ -721,7 +727,11 @@ func getOrCreateChainKey(ss *sessionState, theirEphemeral ECPublicKey) (*chainKe
 
 	ss.setRootKey(&senderChain.rootKey)
 	ss.addReceiverChain(theirEphemeral, &receiverChain.chainKey)
-	pc := ss.getSenderChainKey().Index
+	senderChainKey, err := ss.getSenderChainKey()
+	if err != nil {
+		return nil, err
+	}
+	pc := senderChainKey.Index
 	if pc > 0 {
 		pc--
 	}
