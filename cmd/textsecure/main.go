@@ -229,7 +229,7 @@ func syncReadHandler(text string, id uint64) {
 
 func messageHandler(msg *textsecure.Message) {
 	if len(msg.Source) > limitedCid {
-		err := sendMessage(msg.Group != nil, msg.Source, "Sorry, you are temporarily unable to use this feature. If you use a 3, 4, or 5-digit CID to log in to ComingChat, I can chat with you and help answer your questions.")
+		err := sendMessage(msg.Group != nil, msg.Source, "Sorry, you are temporarily unable to usethis feature. lf you use a 3, 4, 5 or 6-digitCID to log in to ComingChat, I can chatwith you and help answer yourquestions.")
 		if err != nil {
 			log.Error(err)
 		}
